@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: SocialSphereBackend
+
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;database=SocialSphere;trustServerCertificate=true;
+    username: hubert
+    password: root123
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+  jpa:
+    hibernate:
+      dialect: org.hibernate.dialect.SQLServerDialect
+
+
+  liquibase:
+    change-log: classpath:database/liquibase-changelog.xml

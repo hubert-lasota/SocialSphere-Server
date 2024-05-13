@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- DELETE EXISTING TABLES-->
+    <changeSet id="1" author="hlasota">
+        <sqlFile path="drop-tables.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <!-- CREATE USER AND RELATIONS TABLES-->
+    <changeSet id="2" author="hlasota">
+        <sqlFile path="schemas/user/create-user.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <changeSet id="3" author="hlasota">
+        <sqlFile path="schemas/user/create-authority.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <changeSet id="4" author="hlasota">
+        <sqlFile path="schemas/user/create-user_config.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <changeSet id="5" author="hlasota">
+        <sqlFile path="schemas/user/create-user_friend_list.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <changeSet id="6" author="hlasota">
+        <sqlFile path="schemas/user/create-user_profile.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <!-- CREATE POST AND RELATIONS TABLES-->
+    <changeSet id="7" author="hlasota">
+        <sqlFile path="schemas/post/create-post.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <changeSet id="8" author="hlasota">
+        <sqlFile path="schemas/post/create-post_liked_by.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <changeSet id="9" author="hlasota">
+        <sqlFile path="schemas/post/create-post_commented_by.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+
+
+</databaseChangeLog>
