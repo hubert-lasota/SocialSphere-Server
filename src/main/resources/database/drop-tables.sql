@@ -1,6 +1,7 @@
 -- DROP POSTS
-DROP TABLE IF EXISTS post_commented_by;
+DROP TABLE IF EXISTS post_comment;
 DROP TABLE IF EXISTS post_liked_by;
+DROP TABLE IF EXISTS post_image;
 DROP TABLE IF EXISTS post;
 
 -- DROP USERS

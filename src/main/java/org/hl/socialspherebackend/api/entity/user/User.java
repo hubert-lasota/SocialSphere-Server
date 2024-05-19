@@ -45,6 +45,14 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user")
     private Set<Authority> authorities;
 
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return authorities;

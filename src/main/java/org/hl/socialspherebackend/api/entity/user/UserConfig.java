@@ -6,6 +6,9 @@ import jakarta.persistence.*;
 public class UserConfig {
 
     @Id
+    private Long id;
+
+    @MapsId
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
@@ -14,4 +17,7 @@ public class UserConfig {
     @JoinColumn(name = "privacy_level")
     private UserPrivacyLevel userPrivacyLevel;
 
+    public UserPrivacyLevel getUserPrivacyLevel() {
+        return userPrivacyLevel;
+    }
 }

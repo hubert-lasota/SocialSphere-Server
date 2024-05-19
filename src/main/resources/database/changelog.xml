@@ -41,9 +41,12 @@
     </changeSet>
 
     <changeSet id="9" author="hlasota">
-        <sqlFile path="schemas/post/create-post_commented_by.sql" relativeToChangelogFile="true" />
+        <sqlFile path="schemas/post/create-post_comment.sql" relativeToChangelogFile="true" />
     </changeSet>
 
+    <changeSet id="10" author="author">
+        <sqlFile path="schemas/post/create-post_image.sql" relativeToChangelogFile="true" />
+    </changeSet>
 
 
 </databaseChangeLog>

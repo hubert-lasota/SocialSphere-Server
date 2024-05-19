@@ -1,14 +1,14 @@
 package org.hl.socialspherebackend.api.entity.user;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.*;
 
 @Entity
 public class UserProfile {
 
     @Id
+    private Long id;
+
+    @MapsId
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
