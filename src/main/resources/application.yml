@@ -14,4 +14,8 @@ spring:
 
 
   liquibase:
-    change-log: classpath:database/liquibase-changelog.xml
+    change-log: classpath:database/changelog.xml
+
+
+jwt:
+  secret: 951b507db97ad30ab856ce9e0751a0a22c3b4c83db0b1b75537cd93996fa4c58
