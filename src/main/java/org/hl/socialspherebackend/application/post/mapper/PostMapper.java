@@ -1,4 +1,4 @@
-package org.hl.socialspherebackend.application.post;
+package org.hl.socialspherebackend.application.post.mapper;
 
 import org.hl.socialspherebackend.api.dto.post.request.PostRequest;
 import org.hl.socialspherebackend.api.dto.post.response.PostResponse;
@@ -8,7 +8,7 @@ import org.hl.socialspherebackend.api.entity.post.PostImage;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-class PostMapper {
+public class PostMapper {
 
     private PostMapper() { }
 

@@ -20,7 +20,7 @@
     </changeSet>
 
     <changeSet id="4" author="hlasota">
-        <sqlFile path="schemas/user/create-user_config.sql" relativeToChangelogFile="true" />
+        <sqlFile path="schemas/user/create-user_profile_config.sql" relativeToChangelogFile="true" />
     </changeSet>
 
     <changeSet id="5" author="hlasota">
@@ -31,20 +31,24 @@
         <sqlFile path="schemas/user/create-user_profile.sql" relativeToChangelogFile="true" />
     </changeSet>
 
-    <!-- CREATE POST AND RELATIONS TABLES-->
     <changeSet id="7" author="hlasota">
+        <sqlFile path="schemas/user/create-user_friend_request.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <!-- CREATE POST AND RELATIONS TABLES-->
+    <changeSet id="8" author="hlasota">
         <sqlFile path="schemas/post/create-post.sql" relativeToChangelogFile="true" />
     </changeSet>
 
-    <changeSet id="8" author="hlasota">
+    <changeSet id="9" author="hlasota">
         <sqlFile path="schemas/post/create-post_liked_by.sql" relativeToChangelogFile="true" />
     </changeSet>
 
-    <changeSet id="9" author="hlasota">
+    <changeSet id="10" author="hlasota">
         <sqlFile path="schemas/post/create-post_comment.sql" relativeToChangelogFile="true" />
     </changeSet>
 
-    <changeSet id="10" author="author">
+    <changeSet id="11" author="author">
         <sqlFile path="schemas/post/create-post_image.sql" relativeToChangelogFile="true" />
     </changeSet>
 

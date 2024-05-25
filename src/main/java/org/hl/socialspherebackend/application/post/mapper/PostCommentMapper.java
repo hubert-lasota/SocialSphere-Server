@@ -1,4 +1,4 @@
-package org.hl.socialspherebackend.application.post;
+package org.hl.socialspherebackend.application.post.mapper;
 
 import org.hl.socialspherebackend.api.dto.post.response.PostCommentResponse;
 import org.hl.socialspherebackend.api.entity.post.Post;

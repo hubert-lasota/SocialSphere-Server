@@ -8,13 +8,14 @@ import org.hl.socialspherebackend.api.entity.post.Post;
 import org.hl.socialspherebackend.api.entity.post.PostComment;
 import org.hl.socialspherebackend.api.entity.post.PostImage;
 import org.hl.socialspherebackend.api.entity.user.User;
-import org.hl.socialspherebackend.api.entity.user.UserConfig;
-import org.hl.socialspherebackend.api.entity.user.UserPrivacyLevel;
-import org.hl.socialspherebackend.infrastructure.post.PostCommentRepository;
-import org.hl.socialspherebackend.infrastructure.post.PostImageRepository;
-import org.hl.socialspherebackend.infrastructure.post.PostRepository;
-import org.hl.socialspherebackend.infrastructure.user.UserConfigRepository;
-import org.hl.socialspherebackend.infrastructure.user.UserRepository;
+import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
+import org.hl.socialspherebackend.api.entity.user.UserProfilePrivacyLevel;
+import org.hl.socialspherebackend.application.post.mapper.PostCommentMapper;
+import org.hl.socialspherebackend.application.post.mapper.PostMapper;
+import org.hl.socialspherebackend.application.user.UserFacade;
+import org.hl.socialspherebackend.infrastructure.post.repository.PostCommentRepository;
+import org.hl.socialspherebackend.infrastructure.post.repository.PostImageRepository;
+import org.hl.socialspherebackend.infrastructure.post.repository.PostRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -33,26 +34,24 @@ public class PostFacade {
     private final PostRepository postRepository;
     private final PostCommentRepository postCommentRepository;
     private final PostImageRepository postImageRepository;
-    private final UserRepository userRepository;
-    private final UserConfigRepository userConfigRepository;
+    private final UserFacade userFacade;
+
 
     public PostFacade(PostRepository postRepository,
                       PostCommentRepository postCommentRepository,
                       PostImageRepository postImageRepository,
-                      UserRepository userRepository,
-                      UserConfigRepository userConfigRepository) {
+                      UserFacade userFacade) {
 
         this.postRepository = postRepository;
         this.postCommentRepository = postCommentRepository;
         this.postImageRepository = postImageRepository;
-        this.userRepository = userRepository;
-        this.userConfigRepository = userConfigRepository;
+        this.userFacade = userFacade;
     }
 
 
 
     public PostResult createPost(PostRequest postRequest, Long userId) {
-        Optional<User> userOpt = userRepository.findById(userId);
+        Optional<User> userOpt = userFacade.findUserEntityById(userId);
         if(userOpt.isEmpty()) {
             return PostResult.failure(PostResult.Code.CANNOT_CREATE,
                     "Could not find user with id = %d in database!".formatted(userId));
@@ -77,11 +76,8 @@ public class PostFacade {
         return PostResult.success(response, PostResult.Code.CREATED);
     }
 
-
-
-
     public PostCommentResult addCommentToPost(PostCommentRequest request) {
-        Optional<User> authorOpt = userRepository.findById(request.authorId());
+        Optional<User> authorOpt = userFacade.findUserEntityById(request.authorId());
         Optional<Post> postOpt = postRepository.findById(request.postId());
 
         if(authorOpt.isEmpty()) {
@@ -108,7 +104,7 @@ public class PostFacade {
     }
 
     public PostLikeResult addLikeToPost(PostLikeRequest request) {
-        Optional<User> userOpt = userRepository.findById(request.userId());
+        Optional<User> userOpt = userFacade.findUserEntityById(request.userId());
         Optional<Post> postOpt = postRepository.findById(request.postId());
 
         if(userOpt.isEmpty()) {
@@ -139,7 +135,7 @@ public class PostFacade {
 
 
     public PostLikeResult removeLikeToPost(PostLikeRequest request) {
-        Optional<User> userOpt = userRepository.findById(request.userId());
+        Optional<User> userOpt = userFacade.findUserEntityById(request.userId());
         Optional<Post> postOpt = postRepository.findById(request.postId());
 
         if(userOpt.isEmpty()) {
@@ -169,7 +165,7 @@ public class PostFacade {
     }
 
     public Page<PostResponse> findRecentPostAvailableForUser(Long userId, int page, int size) {
-        if(!userRepository.existsById(userId)) {
+        if(!userFacade.existsUserById(userId)) {
             log.debug("Could not find user with id = {}", userId);
             return Page.empty();
         }
@@ -181,30 +177,30 @@ public class PostFacade {
     }
 
     public Page<PostResponse> checkUserPosts(Long userId, Long userToCheckId, int page, int size) {
-        if(!userRepository.existsById(userId)) {
+        if(!userFacade.existsUserById(userId)) {
             log.debug("Could not find user with id = {}", userId);
             return Page.empty();
         }
 
-        if(!userRepository.existsById(userToCheckId)) {
+        if(!userFacade.existsUserById(userToCheckId)) {
             log.debug("Could not find user to check with id = {}", userToCheckId);
             return Page.empty();
         }
 
-        Optional<UserConfig> userToCheckConfigOpt = userConfigRepository.findByUserId(userToCheckId);
+        Optional<UserProfileConfig> userToCheckConfigOpt = userFacade.findUserProfileConfigEntityByUserId(userToCheckId);
         if(userToCheckConfigOpt.isEmpty()) {
             log.debug("User with id = {} does not have configuration", userToCheckId);
             return Page.empty();
         }
-        UserConfig userToCheckConfig = userToCheckConfigOpt.get();
+        UserProfileConfig userToCheckConfig = userToCheckConfigOpt.get();
 
-        if(userToCheckConfig.getUserPrivacyLevel().equals(UserPrivacyLevel.PRIVATE)) {
+        if(userToCheckConfig.getUserPrivacyLevel().equals(UserProfilePrivacyLevel.PRIVATE)) {
             log.debug("User to check have private profile");
             return Page.empty();
         }
 
-        if(!userRepository.areUsersFriends(userId, userToCheckId) &&
-                (!userToCheckConfig.getUserPrivacyLevel().equals(UserPrivacyLevel.PUBLIC))) {
+        if(!userFacade.areUsersFriends(userId, userToCheckId) &&
+                (!userToCheckConfig.getUserPrivacyLevel().equals(UserProfilePrivacyLevel.PUBLIC))) {
             log.debug("User profile is not available for current user");
             return Page.empty();
         }

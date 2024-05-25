@@ -22,4 +22,12 @@ public class Authority implements GrantedAuthority {
         return authority;
     }
 
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public void setAuthority(String authority) {
+        this.authority = authority;
+    }
+
 }

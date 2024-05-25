@@ -5,6 +5,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -15,24 +16,17 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @JoinColumn(
-            name = "username",
-            unique = true,
-            nullable = false
-    )
+    @Column(name = "username", unique = true, nullable = false)
     private String username;
 
-    @JoinColumn(
-            name = "password",
-            nullable = false
-    )
+    @Column(name = "password", nullable = false)
     private String password;
 
     @OneToOne
     private UserProfile userProfile;
 
     @OneToOne
-    private UserConfig userConfig;
+    private UserProfileConfig userProfileConfig;
 
     @ManyToMany
     @JoinTable(
@@ -42,8 +36,8 @@ public class User implements UserDetails {
     )
     private Set<User> userFriendList;
 
-    @OneToMany(mappedBy = "user")
-    private Set<Authority> authorities;
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private Set<Authority> authorities = new HashSet<>();
 
     public Long getId() {
         return id;
@@ -51,6 +45,10 @@ public class User implements UserDetails {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public void addAuthority(Authority authority) {
+        authorities.add(authority);
     }
 
     @Override
@@ -88,4 +86,27 @@ public class User implements UserDetails {
         return true;
     }
 
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public UserProfile getUserProfile() {
+        return userProfile;
+    }
+
+    public void setUserProfile(UserProfile userProfile) {
+        this.userProfile = userProfile;
+    }
+
+    public UserProfileConfig getUserProfileConfig() {
+        return userProfileConfig;
+    }
+
+    public void setUserProfileConfig(UserProfileConfig userProfileConfig) {
+        this.userProfileConfig = userProfileConfig;
+    }
 }

@@ -1,4 +1,4 @@
-package org.hl.socialspherebackend.infrastructure.post;
+package org.hl.socialspherebackend.infrastructure.post.repository;
 
 import org.hl.socialspherebackend.api.entity.post.Post;
 import org.springframework.data.domain.Page;
