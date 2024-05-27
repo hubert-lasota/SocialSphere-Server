@@ -50,11 +50,11 @@ public class PostFacade {
 
 
 
-    public PostResult createPost(PostRequest postRequest, Long userId) {
-        Optional<User> userOpt = userFacade.findUserEntityById(userId);
+    public PostResult createPost(PostRequest postRequest) {
+        Optional<User> userOpt = userFacade.findUserEntityById(postRequest.userId());
         if(userOpt.isEmpty()) {
             return PostResult.failure(PostResult.Code.CANNOT_CREATE,
-                    "Could not find user with id = %d in database!".formatted(userId));
+                    "Could not find user with id = %d in database!".formatted(postRequest.userId()));
         }
 
         User user = userOpt.get();
@@ -164,7 +164,7 @@ public class PostFacade {
         return PostLikeResult.success(post.getId(), user.getId());
     }
 
-    public Page<PostResponse> findRecentPostAvailableForUser(Long userId, int page, int size) {
+    public Page<PostResponse> findRecentPostsAvailableForUser(Long userId, int page, int size) {
         if(!userFacade.existsUserById(userId)) {
             log.debug("Could not find user with id = {}", userId);
             return Page.empty();

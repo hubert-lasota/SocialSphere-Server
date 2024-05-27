@@ -16,8 +16,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = "select * from dbo.user_friend_list where user_id = :userId and user_friend_id = :friendId", nativeQuery = true)
     boolean areUsersFriends(Long userId, Long friendId);
 
+    @Query(value = "select * from dbo.users where username = :username", nativeQuery = true)
     boolean existsByUsername(String username);
 
+    @Query(value = "select id, username, password from dbo.users where username = :username", nativeQuery = true)
     Optional<User> findByUsername(String username);
 
     @Query(value = "select * from user_friend_list where user_id = :userId", nativeQuery = true)

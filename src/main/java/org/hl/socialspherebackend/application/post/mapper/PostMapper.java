@@ -26,6 +26,7 @@ public class PostMapper {
 
         return new PostResponse(
                 entity.getId(),
+                entity.getUser().getId(),
                 entity.getContent(),
                 images,
                 entity.getLikeCount(),

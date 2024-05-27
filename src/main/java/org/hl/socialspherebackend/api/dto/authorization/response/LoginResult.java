@@ -1,10 +1,18 @@
 package org.hl.socialspherebackend.api.dto.authorization.response;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class LoginResult {
 
+    @JsonProperty
     private LoginResponse login;
+
+    @JsonProperty
     private Code code;
+
+    @JsonProperty
     private String message;
 
     public enum Code {
@@ -29,8 +37,19 @@ public class LoginResult {
         return login != null;
     }
 
+    @JsonIgnore
     public boolean isFailure() {
         return !isSuccess();
+    }
+
+
+    @Override
+    public String toString() {
+        return "LoginResult{" +
+                "login=" + login +
+                ", code=" + code +
+                ", message='" + message + '\'' +
+                '}';
     }
 
 }

@@ -24,7 +24,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query(value = "delete from dbo.post_liked_by where post_id = :postId and user_id = :userId", nativeQuery = true)
     void deletePostLikedBy(Long postId, Long userId);
 
-    @Query(value = "select * from dbo.post as p join user_friend_list as ufl on p.user_id = ufl.user_friend_id and ufl.user_id = :userId ", nativeQuery = true)
+    @Query(value = """
+            select * from dbo.post as p 
+            join dbo.user_friend_list as ufl 
+            on p.user_id = ufl.user_friend_id and ufl.user_id = :userId 
+            join dbo.user_profile_config as upc
+            on ufl.user_friend_id = upc.user_id
+            where upc.profile_privacy_level in ('FRIENDS', 'PUBLIC')
+            """, nativeQuery = true)
     Page<Post> findRecentPostsAvailableForUser(Pageable pageable, Long userId);
 
 }

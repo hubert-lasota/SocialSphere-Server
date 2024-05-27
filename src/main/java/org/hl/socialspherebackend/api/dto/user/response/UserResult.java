@@ -1,11 +1,23 @@
 package org.hl.socialspherebackend.api.dto.user.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class UserResult {
 
+    @JsonProperty
     private final UserResponse user;
+
+    @JsonProperty
     private final UserProfileResponse userProfileResponse;
+
+    @JsonProperty
     private final UserProfileConfigResponse userProfileConfigResponse;
+
+    @JsonProperty
     private final Code code;
+
+    @JsonProperty
     private final String message;
 
     public enum Code { NOT_FOUND, FOUND }
@@ -39,8 +51,20 @@ public class UserResult {
         return user != null;
     }
 
+    @JsonIgnore
     public boolean isFailure() {
         return !isSuccess();
+    }
+
+    @Override
+    public String toString() {
+        return "UserResult{" +
+                "user=" + user +
+                ", userProfileResponse=" + userProfileResponse +
+                ", userProfileConfigResponse=" + userProfileConfigResponse +
+                ", code=" + code +
+                ", message='" + message + '\'' +
+                '}';
     }
 
 }

@@ -13,12 +13,16 @@ public class UserProfile {
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
 
+    @Column(name = "first_name")
     private String firstName;
 
+    @Column(name = "last_name")
     private String lastName;
 
+    @Column(name = "city")
     private String city;
 
+    @Column(name = "country")
     private String country;
 
     public User getUser() {

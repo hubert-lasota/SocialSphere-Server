@@ -22,10 +22,10 @@ public class User implements UserDetails {
     @Column(name = "password", nullable = false)
     private String password;
 
-    @OneToOne
+    @OneToOne(mappedBy = "user")
     private UserProfile userProfile;
 
-    @OneToOne
+    @OneToOne(mappedBy = "user")
     private UserProfileConfig userProfileConfig;
 
     @ManyToMany

@@ -14,7 +14,7 @@ public class UserProfileConfig {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @JoinColumn(name = "privacy_level")
+    @Column(name = "profile_privacy_level")
     private UserProfilePrivacyLevel userProfilePrivacyLevel;
 
     public User getUser() {
@@ -32,4 +32,5 @@ public class UserProfileConfig {
     public UserProfilePrivacyLevel getUserPrivacyLevel() {
         return userProfilePrivacyLevel;
     }
+
 }

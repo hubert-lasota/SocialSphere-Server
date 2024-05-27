@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Set;
 
 public record PostResponse(Long id,
+                           Long userId,
                            String content,
                            Set<byte[]> images,
                            Long likeCount,

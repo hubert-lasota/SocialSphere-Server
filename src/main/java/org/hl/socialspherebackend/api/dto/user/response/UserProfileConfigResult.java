@@ -1,11 +1,18 @@
 package org.hl.socialspherebackend.api.dto.user.response;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class UserProfileConfigResult {
 
+    @JsonProperty
     private final UserProfileConfigResponse userProfileConfig;
+
+    @JsonProperty
     private final Code code;
+
+    @JsonProperty
     private final String message;
 
     public enum Code {
@@ -33,8 +40,18 @@ public class UserProfileConfigResult {
         return userProfileConfig != null;
     }
 
+    @JsonIgnore
     public boolean isFailure() {
         return !isSuccess();
+    }
+
+    @Override
+    public String toString() {
+        return "UserProfileConfigResult{" +
+                "userProfileConfig=" + userProfileConfig +
+                ", code=" + code +
+                ", message='" + message + '\'' +
+                '}';
     }
 
 }

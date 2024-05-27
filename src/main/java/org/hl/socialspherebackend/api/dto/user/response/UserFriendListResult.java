@@ -1,9 +1,17 @@
 package org.hl.socialspherebackend.api.dto.user.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class UserFriendListResult {
 
+    @JsonProperty
     private final UserFriendListResponse friends;
+
+    @JsonProperty
     private final Code code;
+
+    @JsonProperty
     private final String message;
 
     public enum Code {
@@ -29,8 +37,19 @@ public class UserFriendListResult {
         return friends != null;
     }
 
+    @JsonIgnore
     public boolean isFailure() {
         return !isSuccess();
+    }
+
+
+    @Override
+    public String toString() {
+        return "UserFriendListResult{" +
+                "friends=" + friends +
+                ", code=" + code +
+                ", message='" + message + '\'' +
+                '}';
     }
 
 }
