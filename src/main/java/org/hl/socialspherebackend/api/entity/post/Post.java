@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import org.hl.socialspherebackend.api.entity.user.User;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Entity
@@ -14,31 +16,8 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
-    private User user;
-
     @Column(name = "content")
     private String content;
-
-    @OneToMany
-    private Set<PostImage> images;
-
-    @ManyToMany
-    @JoinTable(
-            name = "post_liked_by",
-            joinColumns = @JoinColumn(name = "post_id"),
-            inverseJoinColumns = @JoinColumn(name = "user_id")
-    )
-    private Set<User> likedBy;
-
-    @ManyToMany
-    @JoinTable(
-            name = "post_commented_by",
-            joinColumns = @JoinColumn(name = "post_id"),
-            inverseJoinColumns = @JoinColumn(name = "user_id")
-    )
-    private Set<User> commentedBy;
 
     @Column(name = "like_count", nullable = false)
     private Long likeCount;
@@ -51,6 +30,51 @@ public class Post {
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "datetime2")
     private Instant updatedAt;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
+    private User user;
+
+    @OneToMany(mappedBy = "post", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PostImage> images = new HashSet<>();
+
+    @OneToMany(mappedBy = "post", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PostComment> comments = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @JoinTable(
+            name = "post_liked_by",
+            joinColumns = @JoinColumn(name = "post_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> likedBy = new HashSet<>();
+
+
+    protected Post() {
+
+    }
+
+    public Post(String content, Long likeCount, Long commentCount, Instant createdAt, Instant updatedAt, User user) {
+        this.content = content;
+        this.likeCount = likeCount;
+        this.commentCount = commentCount;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.user = user;
+    }
+
+
+    public void appendPostImage(PostImage postImage) {
+        this.images.add(postImage);
+    }
+
+    public void appendPostComment(PostComment postComment) {
+        this.comments.add(postComment);
+    }
+
+    public void appendLikedBy(User likedBy) {
+        this.likedBy.add(likedBy);
+    }
 
     public Long getId() {
         return id;
@@ -84,6 +108,14 @@ public class Post {
         this.images = images;
     }
 
+    public Set<PostComment> getComments() {
+        return comments;
+    }
+
+    public Set<User> getLikedBy() {
+        return likedBy;
+    }
+
     public Long getLikeCount() {
         return likeCount;
     }
@@ -104,10 +136,6 @@ public class Post {
         return createdAt;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public Instant getUpdatedAt() {
         return updatedAt;
     }
@@ -115,4 +143,31 @@ public class Post {
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Post post = (Post) o;
+        return Objects.equals(id, post.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return "Post{" +
+                "id=" + id +
+                ", user=" + user +
+                ", content='" + content + '\'' +
+                ", likeCount=" + likeCount +
+                ", commentCount=" + commentCount +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
+    }
+
 }

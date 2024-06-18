@@ -2,20 +2,21 @@ package org.hl.socialspherebackend.api.entity.user;
 
 import jakarta.persistence.*;
 
+import java.util.Objects;
+
 @Entity
 @Table(name = "user_friend_request")
 public class UserFriendRequest {
 
-    @EmbeddedId
-    private UserFriendRequestId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @MapsId(value = "senderId")
-    @OneToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "sender_id", nullable = false, referencedColumnName = "id")
     private User sender;
 
-    @MapsId(value = "receiverId")
-    @OneToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "receiver_id", nullable = false, referencedColumnName = "id")
     private User receiver;
 
@@ -23,12 +24,19 @@ public class UserFriendRequest {
     @Column(name = "status", nullable = false)
     private UserFriendRequestStatus status;
 
-    public UserFriendRequestId getId() {
-        return id;
+
+    protected UserFriendRequest() {
+
     }
 
-    public void setId(UserFriendRequestId id) {
-        this.id = id;
+    public UserFriendRequest(User sender, User receiver, UserFriendRequestStatus status) {
+        this.sender = sender;
+        this.receiver = receiver;
+        this.status = status;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public User getSender() {
@@ -53,6 +61,29 @@ public class UserFriendRequest {
 
     public void setStatus(UserFriendRequestStatus status) {
         this.status = status;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        UserFriendRequest that = (UserFriendRequest) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return "UserFriendRequest{" +
+                "id=" + id +
+                ", sender=" + sender +
+                ", receiver=" + receiver +
+                ", status=" + status +
+                '}';
     }
 
 }

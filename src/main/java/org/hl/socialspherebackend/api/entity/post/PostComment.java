@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.hl.socialspherebackend.api.entity.user.User;
 
 import java.time.Instant;
+import java.util.Objects;
 
 @Entity
 @Table(name = "post_comment")
@@ -17,7 +18,7 @@ public class PostComment {
     @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
     private User commentAuthor;
 
-    @OneToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "post_id", nullable = false, referencedColumnName = "id")
     private Post post;
 
@@ -30,6 +31,20 @@ public class PostComment {
     @Column(name = "updated_at", nullable = false, columnDefinition = "datetime2")
     private Instant updatedAt;
 
+
+    protected PostComment() {
+
+    }
+
+    public PostComment(User commentAuthor, Post post, String content, Instant createdAt, Instant updatedAt) {
+        this.commentAuthor = commentAuthor;
+        this.post = post;
+        this.content = content;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+
     public Long getId() {
         return id;
     }
@@ -40,10 +55,6 @@ public class PostComment {
 
     public User getCommentAuthor() {
         return commentAuthor;
-    }
-
-    public void setCommentAuthor(User commentAuthor) {
-        this.commentAuthor = commentAuthor;
     }
 
     public Post getPost() {
@@ -66,16 +77,37 @@ public class PostComment {
         return createdAt;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public Instant getUpdatedAt() {
         return updatedAt;
     }
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PostComment that = (PostComment) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return "PostComment{" +
+                "id=" + id +
+                ", commentAuthor=" + commentAuthor +
+                ", post=" + post +
+                ", content='" + content + '\'' +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
     }
 
 }
