@@ -9,12 +9,8 @@ public class AuthorizationMapper {
     private AuthorizationMapper() { }
 
     public static User fromRequestToEntity(LoginRequest request) {
-        User user = new User();
-        user.setUsername(request.username());
-        user.setPassword(request.password());
-        return user;
+        return new User(request.username(), request.password());
     }
-
 
     public static LoginResponse fromEntityToResponse(User user, String jwt) {
         return new LoginResponse(
@@ -23,6 +19,5 @@ public class AuthorizationMapper {
                 jwt
         );
     }
-
 
 }

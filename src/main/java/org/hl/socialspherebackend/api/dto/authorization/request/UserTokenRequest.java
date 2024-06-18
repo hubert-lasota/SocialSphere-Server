@@ -1,4 +1,4 @@
 package org.hl.socialspherebackend.api.dto.authorization.request;
 
-public record UsersTokenRequest(String username, String jwt) {
+public record UserTokenRequest(String username, String jwt) {
 }

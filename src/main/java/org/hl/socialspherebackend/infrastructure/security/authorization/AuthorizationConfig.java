@@ -6,6 +6,7 @@ import org.hl.socialspherebackend.infrastructure.security.jwt.JwtFacade;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 public class AuthorizationConfig {
@@ -13,8 +14,9 @@ public class AuthorizationConfig {
     @Bean
     public AuthorizationFacade authorizationFacade(UserFacade userFacade,
                                                    JwtFacade jwtFacade,
-                                                   AuthenticationManager authenticationManager) {
-        return new AuthorizationFacade(userFacade, jwtFacade, authenticationManager);
+                                                   AuthenticationManager authenticationManager,
+                                                   PasswordEncoder passwordEncoder) {
+        return new AuthorizationFacade(userFacade, jwtFacade, authenticationManager, passwordEncoder);
     }
 
 }
