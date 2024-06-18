@@ -1,4 +1,4 @@
-package org.hl.socialspherebackend.infrastructure.post.repository;
+package org.hl.socialspherebackend.infrastructure.post;
 
 import org.hl.socialspherebackend.api.entity.post.Post;
 import org.springframework.data.domain.Page;
@@ -25,7 +25,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     void deletePostLikedBy(Long postId, Long userId);
 
     @Query(value = """
-            select * from dbo.post as p 
+            select p.id, p.user_id, p.content, p.like_count, p.comment_count, p.created_at, p.updated_at
+            from dbo.post as p 
             join dbo.user_friend_list as ufl 
             on p.user_id = ufl.user_friend_id and ufl.user_id = :userId 
             join dbo.user_profile_config as upc

@@ -1,4 +1,4 @@
-package org.hl.socialspherebackend.infrastructure.user.repository;
+package org.hl.socialspherebackend.infrastructure.user;
 
 import org.hl.socialspherebackend.api.entity.user.User;
 import org.springframework.data.domain.Page;
@@ -27,4 +27,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query(value = "select * from user_friend_list where user_id = :userId", nativeQuery = true)
     Page<User> findUserFriends(Long userId, Pageable pageable);
+
 }
