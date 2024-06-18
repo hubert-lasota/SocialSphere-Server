@@ -16,7 +16,9 @@ public class LoginResult {
     private String message;
 
     public enum Code {
-        CREATED, USERNAME_EXISTS, USERNAME_DOES_NOT_EXISTS, SUCCESSFULLY_LOGGED_IN, VALID_USER, NOT_VALID_USER
+        CREATED, USERNAME_EXISTS, USERNAME_DOES_NOT_EXISTS,
+        SUCCESSFULLY_LOGGED_IN, VALID_USER, NOT_VALID_USER, NOT_VALID_USER_TOKEN,
+        REFRESH_USER_TOKEN
     }
 
     private LoginResult(LoginResponse response, Code code, String message) {

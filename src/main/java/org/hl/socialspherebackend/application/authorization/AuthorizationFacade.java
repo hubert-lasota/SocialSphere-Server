@@ -1,7 +1,7 @@
 package org.hl.socialspherebackend.application.authorization;
 
 import org.hl.socialspherebackend.api.dto.authorization.request.LoginRequest;
-import org.hl.socialspherebackend.api.dto.authorization.request.UsersTokenRequest;
+import org.hl.socialspherebackend.api.dto.authorization.request.UserTokenRequest;
 import org.hl.socialspherebackend.api.dto.authorization.response.LoginResponse;
 import org.hl.socialspherebackend.api.dto.authorization.response.LoginResult;
 import org.hl.socialspherebackend.api.entity.user.Authority;
@@ -13,20 +13,24 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 public class AuthorizationFacade {
 
     private final UserFacade userFacade;
     private final JwtFacade jwtFacade;
     private final AuthenticationManager authenticationManager;
+    private final PasswordEncoder passwordEncoder;
 
 
     public AuthorizationFacade(UserFacade userFacade,
                                JwtFacade jwtFacade,
-                               AuthenticationManager authenticationManager) {
+                               AuthenticationManager authenticationManager,
+                               PasswordEncoder passwordEncoder) {
         this.userFacade = userFacade;
         this.jwtFacade = jwtFacade;
         this.authenticationManager = authenticationManager;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public LoginResult createLogin(LoginRequest request) {
@@ -34,14 +38,11 @@ public class AuthorizationFacade {
             return LoginResult.failure(LoginResult.Code.USERNAME_EXISTS,
                     "Username: %s exists in database!".formatted(request.username()));
         }
-
-        Authority authority = new Authority();
-        authority.setAuthority("USER");
-        User user = AuthorizationMapper.fromRequestToEntity(request);
-        authority.setUser(user);
-        user.addAuthority(authority);
-        userFacade.saveUser(user);
-        userFacade.saveAuthority(authority);
+        LoginRequest encodedRequest = new LoginRequest(request.username(), passwordEncoder.encode(request.password()));
+        User user = AuthorizationMapper.fromRequestToEntity(encodedRequest);
+        Authority authority = new Authority(user, "USER");
+        user.appendAuthority(authority);
+        userFacade.saveUserEntity(user);
 
         String jwt = jwtFacade.generateToken(user);
 
@@ -68,7 +69,7 @@ public class AuthorizationFacade {
         return LoginResult.success(response, LoginResult.Code.SUCCESSFULLY_LOGGED_IN);
     }
 
-    public LoginResult validateUsersToken(UsersTokenRequest request) {
+    public LoginResult validateUserToken(UserTokenRequest request) {
         UserDetails userDetails = null;
         try {
             userDetails = userFacade.loadUserByUsername(request.username());
@@ -86,5 +87,16 @@ public class AuthorizationFacade {
         }
     }
 
+    public LoginResult refreshUserToken(UserTokenRequest request) {
+        if(validateUserToken(request).isFailure()) {
+            return LoginResult.failure(LoginResult.Code.NOT_VALID_USER_TOKEN, "UserToken is invalid");
+        }
+
+        UserDetails userDetails = userFacade.loadUserByUsername(request.username());
+        String jwt = jwtFacade.generateToken(userDetails);
+
+        LoginResponse response = AuthorizationMapper.fromEntityToResponse((User) userDetails, jwt);
+        return LoginResult.success(response, LoginResult.Code.REFRESH_USER_TOKEN);
+    }
 
 }

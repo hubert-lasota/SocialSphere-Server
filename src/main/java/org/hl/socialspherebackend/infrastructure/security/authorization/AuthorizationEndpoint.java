@@ -1,7 +1,7 @@
 package org.hl.socialspherebackend.infrastructure.security.authorization;
 
 import org.hl.socialspherebackend.api.dto.authorization.request.LoginRequest;
-import org.hl.socialspherebackend.api.dto.authorization.request.UsersTokenRequest;
+import org.hl.socialspherebackend.api.dto.authorization.request.UserTokenRequest;
 import org.hl.socialspherebackend.api.dto.authorization.response.LoginResult;
 import org.hl.socialspherebackend.application.authorization.AuthorizationFacade;
 import org.springframework.http.ResponseEntity;
@@ -40,14 +40,21 @@ public class AuthorizationEndpoint {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<LoginResult> validateUsersToken(@RequestBody UsersTokenRequest request) {
-        LoginResult response = authorizationFacade.validateUsersToken(request);
+    public ResponseEntity<LoginResult> validateUserToken(@RequestBody UserTokenRequest request) {
+        LoginResult response = authorizationFacade.validateUserToken(request);
 
         return response.isSuccess() ?
                 ResponseEntity.ok(response) :
                 ResponseEntity.badRequest().body(response);
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResult> refreshUserToken(@RequestBody UserTokenRequest request) {
+        LoginResult response = authorizationFacade.refreshUserToken(request);
 
+        return response.isSuccess() ?
+                ResponseEntity.ok(response) :
+                ResponseEntity.badRequest().body(response);
+    }
 
 }
