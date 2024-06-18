@@ -3,13 +3,13 @@ spring:
     name: SocialSphereBackend
 
   datasource:
-    url: jdbc:sqlserver://localhost:1433;database=SocialSphere;trustServerCertificate=true;
+    url: jdbc:sqlserver://localhost:1433;database=SocialSphereDev;trustServerCertificate=true;
     username: hubert
     password: root123
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   liquibase:
-    change-log: classpath:database/changelog.xml
+    change-log: classpath:database/changelog-dev.xml
 
   jpa:
     properties:
@@ -22,7 +22,7 @@ logging:
   level:
     org:
       hibernate:
-        SQL: DEBUG
+        SQL: TRACE
         type:
           descriptor:
             sql:
@@ -32,12 +32,13 @@ logging:
           user: DEBUG
     org.springframework:
       jdbc:
-        core: DEBUG
-        datasource: DEBUG
-      transaction: DEBUG
+        core: TRACE
+        datasource: TRACE
+      transaction: TRACE
       hibernate: TRACE
 
 
 
 jwt:
   secret: 951b507db97ad30ab856ce9e0751a0a22c3b4c83db0b1b75537cd93996fa4c58
+  expiration_days: 14
