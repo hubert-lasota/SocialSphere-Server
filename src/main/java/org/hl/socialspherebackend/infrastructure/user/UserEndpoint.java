@@ -8,9 +8,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("api/v1/user")
+@RequestMapping("/api/v1/user")
 public class UserEndpoint {
 
     private final UserFacade userFacade;
@@ -23,9 +24,10 @@ public class UserEndpoint {
     @PostMapping("/profile")
     public ResponseEntity<UserProfileResult> createUserProfile(
             @RequestParam Long userId,
+            @RequestParam("profilePicture") MultipartFile profilePicture,
             @RequestBody UserProfileRequest request
     ) {
-        UserProfileResult userProfileResult = userFacade.createUserProfile(userId, request);
+        UserProfileResult userProfileResult = userFacade.createUserProfile(userId, request, profilePicture);
 
         return userProfileResult.isSuccess() ?
                 ResponseEntity.ok(userProfileResult) :
@@ -63,6 +65,16 @@ public class UserEndpoint {
         return userProfileResult.isSuccess() ?
                 ResponseEntity.ok(userProfileResult) :
                 ResponseEntity.badRequest().body(userProfileResult);
+    }
+
+    @GetMapping("/profile/picture")
+    public ResponseEntity<byte[]> findProfilePictureByUserId(@RequestParam Long userId) {
+        byte[] response = userFacade.findUserProfilePictureByUserId(userId);
+
+        return response != null ?
+                ResponseEntity.ok(response) :
+                ResponseEntity.notFound().build();
+
     }
 
     @GetMapping("/profile/config")
@@ -139,10 +151,11 @@ public class UserEndpoint {
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResult> updateUserProfile(
             @RequestParam Long userId,
+            @RequestParam("profilePicture") MultipartFile profilePicture,
             @RequestBody UserProfileRequest request
     ) {
 
-        UserProfileResult userProfileResult = userFacade.updateUserProfile(userId, request);
+        UserProfileResult userProfileResult = userFacade.updateUserProfile(userId, request, profilePicture);
 
         return userProfileResult.isSuccess() ?
                 ResponseEntity.ok(userProfileResult) :
@@ -161,5 +174,20 @@ public class UserEndpoint {
                 ResponseEntity.ok(userProfileConfigResult) :
                 ResponseEntity.badRequest().body(userProfileConfigResult);
     }
+
+
+    @GetMapping("/search")
+    public ResponseEntity<SearchUsersResult> searchFriends(
+            @RequestParam Long userId,
+            @RequestParam String containsString,
+            @RequestParam Integer maxSize
+    ) {
+        SearchUsersResult searchUsersResult = userFacade.findUsers(userId, containsString, maxSize);
+
+        return searchUsersResult.isSuccess() ?
+                ResponseEntity.ok(searchUsersResult) :
+                ResponseEntity.badRequest().body(searchUsersResult);
+    }
+
 
 }

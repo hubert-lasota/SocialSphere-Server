@@ -4,11 +4,8 @@ import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.*;
 import org.hl.socialspherebackend.api.entity.user.*;
-import org.hl.socialspherebackend.application.user.mapper.UserFriendRequestMapper;
-import org.hl.socialspherebackend.application.user.mapper.UserMapper;
-import org.hl.socialspherebackend.application.user.mapper.UserProfileConfigMapper;
-import org.hl.socialspherebackend.application.user.mapper.UserProfileMapper;
-import org.hl.socialspherebackend.infrastructure.user.repository.*;
+import org.hl.socialspherebackend.application.util.FileUtils;
+import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -17,40 +14,34 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static java.util.stream.Collectors.toSet;
 
 public class UserFacade implements UserDetailsService {
 
     private static final Logger log = LoggerFactory.getLogger(UserFacade.class);
 
     private final UserRepository userRepository;
-    private final UserProfileConfigRepository userProfileConfigRepository;
-    private final UserProfileRepository userProfileRepository;
-    private final UserFriendRequestRepository userFriendRequestRepository;
-    private final AuthorityRepository authorityRepository;
 
-
-    public UserFacade(UserRepository userRepository,
-                      UserProfileConfigRepository userProfileConfigRepository,
-                      UserProfileRepository userProfileRepository,
-                      UserFriendRequestRepository userFriendRequestRepository,
-                      AuthorityRepository authorityRepository) {
-
+    public UserFacade(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.userProfileConfigRepository = userProfileConfigRepository;
-        this.userProfileRepository = userProfileRepository;
-        this.userFriendRequestRepository = userFriendRequestRepository;
-        this.authorityRepository = authorityRepository;
+
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Optional<User> user = userRepository.findByUsername(username);
         if(user.isPresent()) {
-            log.info("load user: {}", user.get());
+            log.debug("Load user: {}", user.get());
             return user.get();
         }
         log.debug("There is no user with username: \"{}\" in database!", username);
@@ -74,16 +65,16 @@ public class UserFacade implements UserDetailsService {
         }
         User sender = senderOpt.get();
         User receiver = receiverOpt.get();
+        UserFriendRequest userFriendRequest = new UserFriendRequest(sender, receiver, UserFriendRequestStatus.WAITING_FOR_RESPONSE);
 
-        UserFriendRequestId id = new UserFriendRequestId(senderId, receiverId);
-        UserFriendRequest userFriendRequest = new UserFriendRequest();
-        userFriendRequest.setId(id);
-        userFriendRequest.setSender(sender);
-        userFriendRequest.setReceiver(receiver);
-        userFriendRequest.setStatus(UserFriendRequestStatus.WAITING_FOR_RESPONSE);
-        userFriendRequestRepository.save(userFriendRequest);
+        sender.appendSentFriendRequest(userFriendRequest);
+        sender.appendReceivedFriendRequest(userFriendRequest);
+        receiver.appendSentFriendRequest(userFriendRequest);
+        receiver.appendReceivedFriendRequest(userFriendRequest);
+        userRepository.save(sender);
+        userRepository.save(receiver);
 
-        UserFriendRequestResponse response = UserFriendRequestMapper.fromEntityToResponse(userFriendRequest);
+        UserFriendRequestResponse response = UserMapper.fromUserFriendRequestEntityToResponse(userFriendRequest);
         return UserFriendRequestResult.success(response, UserFriendRequestResult.Code.SENT);
     }
 
@@ -99,56 +90,100 @@ public class UserFacade implements UserDetailsService {
     private UserFriendRequestResult responseToFriendRequest(Long senderId,
                                                             Long receiverId,
                                                             UserFriendRequestStatus status) {
-        if(!existsUserById(senderId)) {
+
+        Optional<User> senderOpt = userRepository.findById(senderId);
+        Optional<User> receiverOpt = userRepository.findById(receiverId);
+
+        if(senderOpt.isEmpty()) {
             return UserFriendRequestResult.failure(
                     UserFriendRequestResult.Code.SENDER_NOT_FOUND,
                     "sender with id = %d does not exits in database!".formatted(senderId)
             );
         }
-        if(!existsUserById(receiverId)) {
+        if(receiverOpt.isEmpty()) {
             return UserFriendRequestResult.failure(
                     UserFriendRequestResult.Code.RECEIVER_NOT_FOUND,
                     "receiver with id = %d does not exits in database!".formatted(receiverId)
             );
         }
 
-        UserFriendRequestId id = new UserFriendRequestId(receiverId, senderId);
-        Optional<UserFriendRequest> userFriendRequestOpt = userFriendRequestRepository.findById(id);
-        if(userFriendRequestOpt.isEmpty()) {
+        User sender = senderOpt.get();
+        User receiver = receiverOpt.get();
+
+        Set<UserFriendRequest> friendRequests = receiver.getReceivedFriendRequests()
+                .stream()
+                .filter(fr -> fr.getSender().equals(sender))
+                .collect(toSet());
+
+        if(friendRequests.isEmpty()) {
             return UserFriendRequestResult.failure(
                     UserFriendRequestResult.Code.FRIEND_REQUEST_NOT_FOUND,
                     "Friend request does not exits in database!"
             );
         }
 
-        UserFriendRequest userFriendRequest = userFriendRequestOpt.get();
-        userFriendRequest.setStatus(status);
-        userFriendRequestRepository.save(userFriendRequest);
+        if(friendRequests.size() > 1) {
+            throw new RuntimeException("Found more than one friend request: %s".formatted(friendRequests));
+        }
 
-        UserFriendRequestResponse response = UserFriendRequestMapper.fromEntityToResponse(userFriendRequest);
+
+        UserFriendRequest friendRequest = friendRequests.
+                stream().
+                findFirst().
+                get();
+
+        friendRequest.setStatus(status);
+
+        sender.getSentFriendRequests().removeIf(fr -> fr.getId().equals(friendRequest.getId()));
+        sender.getReceivedFriendRequests().removeIf(fr -> fr.getId().equals(friendRequest.getId()));
+        receiver.getSentFriendRequests().removeIf(fr -> fr.getId().equals(friendRequest.getId()));
+        receiver.getReceivedFriendRequests().removeIf(fr -> fr.getId().equals(friendRequest.getId()));
+
+        sender.appendSentFriendRequest(friendRequest);
+        sender.appendReceivedFriendRequest(friendRequest);
+        receiver.appendSentFriendRequest(friendRequest);
+        receiver.appendReceivedFriendRequest(friendRequest);
+
+        userRepository.save(sender);
+        userRepository.save(receiver);
+
+        UserFriendRequestResponse response = UserMapper.fromUserFriendRequestEntityToResponse(friendRequest);
         return UserFriendRequestResult.success(response, UserFriendRequestResult.Code.REPLIED);
     }
 
-    public UserProfileResult createUserProfile(Long userId, UserProfileRequest request) {
+    public UserProfileResult createUserProfile(Long userId, UserProfileRequest request, MultipartFile profilePicture) {
         Optional<User> userOpt = findUserEntityById(userId);
         if(userOpt.isEmpty()) {
             return UserProfileResult.failure(UserProfileResult.Code.USER_NOT_FOUND,
                     "User with id = %d does not exits in database!".formatted(userId));
         }
 
-        if(existsUserProfileByUserId(userId)) {
+        User user = userOpt.get();
+
+        if(user.getUserProfile() != null) {
             return UserProfileResult.failure(UserProfileResult.Code.CANNOT_CREATE,
                     "User with id = %d already have profile. Use POST endpoint!");
         }
 
-        User user = userOpt.get();
-        UserProfile userProfile = UserProfileMapper.fromRequestToEntity(request);
-        userProfile.setUser(user);
+        UserProfile userProfile = UserMapper.fromRequestToUserProfileEntity(request, user);
+
+        byte[] imgResponse = null;
+        if(profilePicture != null) {
+            String imgType = profilePicture.getOriginalFilename();
+            try {
+                imgResponse = profilePicture.getBytes();
+                byte[] compressedProfilePicture = FileUtils.compressFile(imgResponse);
+                UserProfilePicture userProfilePicture = new UserProfilePicture(imgType, compressedProfilePicture);
+                userProfile.setProfilePicture(userProfilePicture);
+            } catch (IOException exc) {
+                log.debug("Problem occurred with getting bytes in profile picture - {}", profilePicture);
+            }
+        }
+
         user.setUserProfile(userProfile);
-        userProfileRepository.save(userProfile);
         userRepository.save(user);
 
-        UserProfileResponse response = UserProfileMapper.fromEntityToResponse(userProfile);
+        UserProfileResponse response = UserMapper.fromUserProfileEntityToResponse(userProfile, imgResponse);
         return UserProfileResult.success(response, UserProfileResult.Code.CREATED);
     }
 
@@ -162,22 +197,21 @@ public class UserFacade implements UserDetailsService {
             );
         }
 
-        if(existsUserProfileConfigByUserId(userId)) {
+        User user = userOpt.get();
+
+        if(user.getUserProfileConfig() != null) {
             return UserProfileConfigResult.failure(
                     UserProfileConfigResult.Code.CANNOT_CREATE,
                     "User with id = %d already have profile config. Use POST endpoint"
             );
         }
 
-        User user = userOpt.get();
-        UserProfileConfig userProfileConfig = UserProfileConfigMapper.fromRequestToEntity(request);
+        UserProfileConfig userProfileConfig = UserMapper.fromRequestToUserProfileConfigEntity(request, user);
         user.setUserProfileConfig(userProfileConfig);
-        userProfileConfig.setUser(user);
 
         userRepository.save(user);
-        userProfileConfigRepository.save(userProfileConfig);
 
-        UserProfileConfigResponse response = UserProfileConfigMapper.fromEntityToResponse(userProfileConfig);
+        UserProfileConfigResponse response = UserMapper.fromUserProfileConfigEntityToResponse(userProfileConfig);
         return UserProfileConfigResult.success(response, UserProfileConfigResult.Code.CREATED);
     }
 
@@ -189,19 +223,21 @@ public class UserFacade implements UserDetailsService {
                     "User with id = %d does not exits in database!".formatted(userId));
         }
 
-        Optional<UserProfile> userProfileOpt = findUserProfileEntityByUserId(userId);
-        UserProfileResponse userProfileResponse = null;
-        if(userProfileOpt.isPresent()) {
-            userProfileResponse = UserProfileMapper.fromEntityToResponse(userProfileOpt.get());
-        }
+        User user = userOpt.get();
 
-        Optional<UserProfileConfig> userProfileConfigOpt = findUserProfileConfigEntityByUserId(userId);
-        UserProfileConfigResponse userProfileConfigResponse = null;
-        if(userProfileConfigOpt.isPresent()) {
-            userProfileConfigResponse = UserProfileConfigMapper.fromEntityToResponse(userProfileConfigOpt.get());
+        UserProfile userProfile = user.getUserProfile();
+        UserProfilePicture userProfilePicture = userProfile.getProfilePicture();
+        UserProfileResponse userProfileResponse;
+        byte[] profilePic = null;
+        if(userProfilePicture != null) {
+            profilePic = FileUtils.decompressFile(userProfilePicture.getImage());
         }
+        userProfileResponse = UserMapper.fromUserProfileEntityToResponse(userProfile, profilePic);
 
-        UserResponse userResponse = UserMapper.fromEntityToResponse(userOpt.get());
+        UserProfileConfig userProfileConfig = user.getUserProfileConfig();
+        UserProfileConfigResponse userProfileConfigResponse = UserMapper.fromUserProfileConfigEntityToResponse(userProfileConfig);
+
+        UserResponse userResponse = UserMapper.fromUserEntityToResponse(user);
 
         return UserResult.success(userResponse,
                 userProfileResponse,
@@ -210,28 +246,52 @@ public class UserFacade implements UserDetailsService {
     }
 
     public UserProfileResult findUserProfileByUserId(Long userId) {
-        Optional<UserProfile> userProfileOpt = userProfileRepository.findByUserId(userId);
-        if(userProfileOpt.isEmpty()) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
+            return UserProfileResult.failure(
+                    UserProfileResult.Code.USER_NOT_FOUND,
+                    "User with id = %d does not exists in database!".formatted(userId)
+            );
+        }
+        User user = userOpt.get();
+        UserProfile userProfile = user.getUserProfile();
+
+        if(userProfile == null) {
             return UserProfileResult.failure(
                     UserProfileResult.Code.USER_PROFILE_NOT_FOUND,
-                    "User profile with user id = %d does not exists in database!".formatted(userId)
+                    "User with id = %d does not have profile in database!".formatted(userId)
             );
         }
 
-        UserProfileResponse response = UserProfileMapper.fromEntityToResponse(userProfileOpt.get());
+        byte[] profilePicture = userProfile.getProfilePicture().getImage();
+        if(profilePicture != null) {
+            profilePicture = FileUtils.decompressFile(profilePicture);
+        }
+
+        UserProfileResponse response = UserMapper.fromUserProfileEntityToResponse(userProfile, profilePicture);
         return UserProfileResult.success(response, UserProfileResult.Code.FOUND);
     }
 
     public UserProfileConfigResult findUserProfileConfigByUserId(Long userId) {
-        Optional<UserProfileConfig> userProfileConfigOpt = userProfileConfigRepository.findByUserId(userId);
-        if(userProfileConfigOpt.isEmpty()) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
+            return UserProfileConfigResult.failure(
+              UserProfileConfigResult.Code.USER_NOT_FOUND,
+              "User with id = %d does not exits in database".formatted(userId)
+            );
+        }
+
+        User user = userOpt.get();
+        UserProfileConfig userProfileConfig = user.getUserProfileConfig();
+
+        if(userProfileConfig == null) {
             return UserProfileConfigResult.failure(
                     UserProfileConfigResult.Code.USER_PROFILE_CONFIG_NOT_FOUND,
                     "User profile config with user id = %d does not exits in database!".formatted(userId)
             );
         }
 
-        UserProfileConfigResponse response = UserProfileConfigMapper.fromEntityToResponse(userProfileConfigOpt.get());
+        UserProfileConfigResponse response = UserMapper.fromUserProfileConfigEntityToResponse(userProfileConfig);
         return UserProfileConfigResult.success(response, UserProfileConfigResult.Code.FOUND);
     }
 
@@ -254,9 +314,10 @@ public class UserFacade implements UserDetailsService {
         List<User> userFriends = userFriendsOpt.get();
         List<UserFriendResponse> userFriendResponses = new ArrayList<>();
         userFriends.forEach(u -> {
-            UserResponse user = UserMapper.fromEntityToResponse(u);
-            UserProfileResponse userProfile = UserProfileMapper.fromEntityToResponse(u.getUserProfile());
-            UserProfileConfigResponse userProfileConfig = UserProfileConfigMapper.fromEntityToResponse(u.getUserProfileConfig());
+            UserResponse user = UserMapper.fromUserEntityToResponse(u);
+            byte[] profilePicture = u.getUserProfile().getProfilePicture().getImage();
+            UserProfileResponse userProfile = UserMapper.fromUserProfileEntityToResponse(u.getUserProfile(), profilePicture);
+            UserProfileConfigResponse userProfileConfig = UserMapper.fromUserProfileConfigEntityToResponse(u.getUserProfileConfig());
             userFriendResponses.add(new UserFriendResponse(user, userProfile, userProfileConfig));
         });
 
@@ -273,68 +334,202 @@ public class UserFacade implements UserDetailsService {
         Pageable pageable = PageRequest.of(page, size);
         Page<User> userPage = userRepository.findUserFriends(userId, pageable);
 
-        Page<UserFriendResponse> response = userPage.map(u -> {
-            UserResponse user = UserMapper.fromEntityToResponse(u);
-            UserProfileResponse userProfile = UserProfileMapper.fromEntityToResponse(u.getUserProfile());
-            UserProfileConfigResponse userProfileConfig = UserProfileConfigMapper.fromEntityToResponse(u.getUserProfileConfig());
+        return userPage.map(u -> {
+            UserResponse user = UserMapper.fromUserEntityToResponse(u);
+            byte[] profilePicture = u.getUserProfile().getProfilePicture().getImage();
+            UserProfileResponse userProfile = UserMapper.fromUserProfileEntityToResponse(u.getUserProfile(), profilePicture);
+            UserProfileConfigResponse userProfileConfig = UserMapper.fromUserProfileConfigEntityToResponse(u.getUserProfileConfig());
             return new UserFriendResponse(user, userProfile, userProfileConfig);
         });
-
-        return response;
     }
 
-    public UserProfileResult updateUserProfile(Long userId, UserProfileRequest request) {
-        if(!existsUserById(userId)) {
+    public SearchUsersResult findUsers(Long userId, final String containsString, Integer maxSize) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
+            return SearchUsersResult.failure(SearchUsersResult.Code.USER_DOES_NOT_EXITS,
+                    "user with id = %d does not exits in database".formatted(userId));
+        }
+        User user = userOpt.get();
+
+        List<User> userEntities = userRepository.findAll();
+        if(userEntities.isEmpty()) {
+            return SearchUsersResult.failure(SearchUsersResult.Code.USERS_NOT_FOUND,
+                    "there are no users in database");
+        }
+
+        List<User> userEntitiesWithProfiles = userEntities
+                .stream()
+                .filter(u -> u.getUserProfile() != null)
+                .toList();
+
+        if(userEntitiesWithProfiles.isEmpty()) {
+            return SearchUsersResult.failure(SearchUsersResult.Code.USERS_NOT_FOUND,
+                    "there are no users in database");
+        }
+
+        Pattern pattern = Pattern.compile("^" + containsString + ".*$", Pattern.CASE_INSENSITIVE);
+
+        List<User> userEntitiesThatContainsFirstNameString = userEntitiesWithProfiles
+                .stream()
+                .filter(u -> {
+                    String foundUserFirstName = u.getUserProfile().getFirstName();
+                    Matcher matcher = pattern.matcher(foundUserFirstName);
+                    return matcher.matches();
+                })
+                .toList();
+
+        List<User> userEntitiesResponse = new ArrayList<>(maxSize);
+
+        if(!userEntitiesThatContainsFirstNameString.isEmpty()) {
+            for(int i = 0; i < maxSize && i < userEntitiesThatContainsFirstNameString.size(); i++) {
+                userEntitiesResponse.add(userEntitiesThatContainsFirstNameString.get(i));
+            }
+        }
+
+        if(userEntitiesResponse.size() < maxSize) {
+            List<User> userEntitiesThatContainsLastNameString = userEntitiesWithProfiles.stream()
+                    .filter(u -> {
+                        for(User ue : userEntitiesThatContainsFirstNameString) {
+                            if(ue.equals(u)) return false;
+                        }
+                        return true;
+                    })
+                    .filter(ue -> {
+                        String foundUserLastName = ue.getUserProfile().getLastName();
+                        Matcher matcher = pattern.matcher(foundUserLastName);
+                        return matcher.matches();
+                    })
+
+                    .toList();
+
+            for(int i = userEntitiesResponse.size(); i < maxSize && i < userEntitiesThatContainsLastNameString.size(); i++) {
+                userEntitiesResponse.add(userEntitiesThatContainsLastNameString.get(i));
+            }
+        }
+
+        List<SearchUsersResponse> response = userEntitiesResponse
+                .stream()
+                .map(u -> {
+                    UserProfile profileResponse = u.getUserProfile();
+                    String firstName = profileResponse.getFirstName();
+                    String lastName = profileResponse.getLastName();
+                    byte[] profilePicture = null;
+                    if(profileResponse.getProfilePicture() != null) {
+                        profilePicture = FileUtils.decompressFile(profileResponse.getProfilePicture().getImage());
+                    }
+
+                    return new SearchUsersResponse(u.getId(), firstName, lastName, profilePicture);
+                })
+                .toList();
+
+
+        if(response.isEmpty()) {
+            return SearchUsersResult.failure(SearchUsersResult.Code.NOT_FOUND,
+                    "There are no users with these parameters");
+        }
+
+        return SearchUsersResult.success(response, SearchUsersResult.Code.FOUND);
+    }
+
+
+    public byte[] findUserProfilePictureByUserId(Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
+            log.debug("Cannot find user profile picture because user with id = {} does not exits in database!", userId);
+            return null;
+        }
+        User user = userOpt.get();
+
+        UserProfile userProfile = user.getUserProfile();
+        if(userProfile == null) {
+            log.debug("Cannot find user profile picture because user with id = {} does not have profile!", userId);
+            return null;
+        }
+
+        UserProfilePicture userProfilePicture = userProfile.getProfilePicture();
+        if(userProfilePicture == null) {
+            log.debug("User with id = {} does not have profile picture", userId);
+            return null;
+        }
+
+        return FileUtils.decompressFile(userProfilePicture.getImage());
+    }
+
+    public UserProfileResult updateUserProfile(Long userId, UserProfileRequest request, MultipartFile profilePicture) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
             return UserProfileResult.failure(
                     UserProfileResult.Code.USER_NOT_FOUND,
                     "User id = %d doesn't exits in database".formatted(userId)
             );
         }
+        User user = userOpt.get();
 
-        Optional<UserProfile> userProfileOpt = userProfileRepository.findByUserId(userId);
-        if(userProfileOpt.isEmpty()) {
+        UserProfile userProfile = user.getUserProfile();
+        if(userProfile == null) {
             return UserProfileResult.failure(
                     UserProfileResult.Code.USER_PROFILE_NOT_FOUND,
                     "User Profile with user id = %d doesn't exits in database".formatted(userId)
             );
         }
 
-        UserProfile userProfile = userProfileOpt.get();
-        updateUserProfileEntity(userProfile, request);
-        userProfileRepository.save(userProfile);
+        updateUserProfileEntity(userProfile, request, profilePicture);
+        userRepository.save(user);
 
-        UserProfileResponse response = UserProfileMapper.fromEntityToResponse(userProfile);
+        UserProfilePicture userProfilePicture = userProfile.getProfilePicture();
+        byte[] profilePictureResponse = null;
+        if(userProfilePicture != null) {
+            profilePictureResponse = FileUtils.decompressFile(userProfilePicture.getImage());
+        }
+
+        UserProfileResponse response = UserMapper.fromUserProfileEntityToResponse(userProfile, profilePictureResponse);
         return UserProfileResult.success(response, UserProfileResult.Code.UPDATED);
     }
 
-    private void updateUserProfileEntity(UserProfile entity, UserProfileRequest request) {
+    private void updateUserProfileEntity(UserProfile entity, UserProfileRequest request, MultipartFile profilePicture) {
         entity.setFirstName(request.firstName());
         entity.setLastName(request.lastName());
         entity.setCity(request.city());
         entity.setCountry(request.country());
+
+        if(profilePicture != null) {
+            try {
+                String imgType = profilePicture.getOriginalFilename();
+                byte[] compressedImg = FileUtils.compressFile(profilePicture.getBytes());
+                UserProfilePicture pic = new UserProfilePicture(imgType, compressedImg);
+                entity.setProfilePicture(pic);
+            } catch (IOException exc) {
+                log.error("Error occurred with decompressing file - {}", profilePicture);
+            }
+
+        }
+
     }
 
     public UserProfileConfigResult updateUserProfileConfig(Long userId, UserProfileConfigRequest request) {
-        if(!existsUserById(userId)) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
             return UserProfileConfigResult.failure(
                     UserProfileConfigResult.Code.USER_NOT_FOUND,
                     "User id = %d doesn't exits in database".formatted(userId)
             );
         }
 
-        Optional<UserProfileConfig> userProfileConfigOpt = userProfileConfigRepository.findByUserId(userId);
-        if(userProfileConfigOpt.isEmpty()) {
+        User user = userOpt.get();
+        UserProfileConfig userProfileConfig = user.getUserProfileConfig();
+
+        if(userProfileConfig == null) {
             return UserProfileConfigResult.failure(
                     UserProfileConfigResult.Code.USER_PROFILE_CONFIG_NOT_FOUND,
                     "User Profile Config with user id = %d doesn't exits in database".formatted(userId)
             );
         }
 
-        UserProfileConfig userProfileConfig = userProfileConfigOpt.get();
         updateUserProfileConfigEntity(userProfileConfig, request);
-        userProfileConfigRepository.save(userProfileConfig);
+        user.setUserProfileConfig(userProfileConfig);
+        userRepository.save(user);
 
-        UserProfileConfigResponse response = UserProfileConfigMapper.fromEntityToResponse(userProfileConfig);
+        UserProfileConfigResponse response = UserMapper.fromUserProfileConfigEntityToResponse(userProfileConfig);
         return UserProfileConfigResult.success(response, UserProfileConfigResult.Code.UPDATED);
     }
 
@@ -347,14 +542,6 @@ public class UserFacade implements UserDetailsService {
         return userRepository.findById(userId);
     }
 
-    public Optional<UserProfile> findUserProfileEntityByUserId(Long userId) {
-        return userProfileRepository.findByUserId(userId);
-    }
-
-    public Optional<UserProfileConfig> findUserProfileConfigEntityByUserId(Long userId) {
-        return userProfileConfigRepository.findByUserId(userId);
-    }
-
     public boolean existsUserById(Long userId) {
         return userRepository.existsById(userId);
     }
@@ -363,25 +550,16 @@ public class UserFacade implements UserDetailsService {
         return userRepository.existsByUsername(username);
     }
 
-    public boolean existsUserProfileByUserId(Long userId) {
-        return userProfileRepository.existsByUserId(userId);
-    }
-
-    public boolean existsUserProfileConfigByUserId(Long userId) {
-        return userProfileConfigRepository.existsByUserId(userId);
-    }
-
     public boolean areUsersFriends(Long userId, Long friendId) {
         return userRepository.areUsersFriends(userId, friendId);
     }
 
-    public User saveUser(User user) {
-        return userRepository.save(user);
+    public User saveUserEntity(User user) {
+        return userRepository.saveAndFlush(user);
     }
 
-    public Authority saveAuthority(Authority authority) {
-        return authorityRepository.save(authority);
+    public List<User> findAllUserEntities() {
+        return userRepository.findAll();
     }
-
 
 }

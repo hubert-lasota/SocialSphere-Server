@@ -62,7 +62,7 @@ public class PostEndpoint {
 
         return pageOfPostResponse.isEmpty() ?
                 new ResponseEntity<>(pageOfPostResponse, HttpStatus.NO_CONTENT) :
-                new ResponseEntity<>(pageOfPostResponse, HttpStatus.FOUND);
+                new ResponseEntity<>(pageOfPostResponse, HttpStatus.OK);
     }
 
 

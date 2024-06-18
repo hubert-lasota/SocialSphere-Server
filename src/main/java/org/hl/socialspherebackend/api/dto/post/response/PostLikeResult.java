@@ -17,7 +17,7 @@ public class PostLikeResult {
     @JsonProperty
     private final String message;
 
-    public enum Code { USER_NOT_FOUND, POST_NOT_FOUND, USER_ALREADY_LIKES_POST, LIKE_ADDED}
+    public enum Code { USER_NOT_FOUND, POST_NOT_FOUND, USER_ALREADY_LIKES_POST, USER_DOES_NOT_LIKES_POST, LIKE_ADDED}
 
     public PostLikeResult(Long postId, Long userId, Code code, String message) {
         this.postId = postId;
