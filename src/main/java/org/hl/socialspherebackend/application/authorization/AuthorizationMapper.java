@@ -4,7 +4,7 @@ import org.hl.socialspherebackend.api.dto.authorization.request.LoginRequest;
 import org.hl.socialspherebackend.api.dto.authorization.response.LoginResponse;
 import org.hl.socialspherebackend.api.entity.user.User;
 
-public class AuthorizationMapper {
+class AuthorizationMapper {
 
     private AuthorizationMapper() { }
 

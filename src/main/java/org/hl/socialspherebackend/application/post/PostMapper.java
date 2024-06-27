@@ -1,12 +1,10 @@
 package org.hl.socialspherebackend.application.post;
 
-import org.hl.socialspherebackend.api.dto.post.request.PostRequest;
 import org.hl.socialspherebackend.api.dto.post.response.PostCommentResponse;
 import org.hl.socialspherebackend.api.dto.post.response.PostResponse;
 import org.hl.socialspherebackend.api.entity.post.Post;
 import org.hl.socialspherebackend.api.entity.post.PostComment;
 import org.hl.socialspherebackend.api.entity.post.PostImage;
-import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.api.entity.user.UserProfile;
 import org.hl.socialspherebackend.application.user.UserMapper;
 import org.hl.socialspherebackend.application.util.FileUtils;
@@ -14,7 +12,7 @@ import org.hl.socialspherebackend.application.util.FileUtils;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PostMapper {
+class PostMapper {
 
     private PostMapper() { }
 
@@ -40,17 +38,6 @@ public class PostMapper {
                 entity.getUpdatedAt()
         );
     }
-
-
-//    public static PostComment fromRequestToPostCommentEntity(Post post, User commentAuthor, String content, Instant creat) {
-//        PostComment postComment = new PostComment();
-//        postComment.setPost(post);
-//        postComment.setCommentAuthor(commentAuthor);
-//        postComment.setContent(content);
-//        return postComment;
-//
-//        return new PostComment(commentAuthor, post, content);
-//    }
 
     public static PostCommentResponse fromPostCommentEntityToResponse(PostComment entity) {
         return new PostCommentResponse(

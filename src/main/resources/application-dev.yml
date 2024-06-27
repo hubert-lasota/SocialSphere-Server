@@ -9,7 +9,7 @@ spring:
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   liquibase:
-    change-log: classpath:database/changelog-dev.xml
+    change-log: classpath:database/changelog.xml
 
   jpa:
     properties:

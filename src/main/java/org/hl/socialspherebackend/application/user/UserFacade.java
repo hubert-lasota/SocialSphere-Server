@@ -351,7 +351,7 @@ public class UserFacade implements UserDetailsService {
         }
         User user = userOpt.get();
 
-        List<User> userEntities = userRepository.findAll();
+        List<User> userEntities = userRepository.findUserHeaders();
         if(userEntities.isEmpty()) {
             return SearchUsersResult.failure(SearchUsersResult.Code.USERS_NOT_FOUND,
                     "there are no users in database");
@@ -555,7 +555,7 @@ public class UserFacade implements UserDetailsService {
     }
 
     public User saveUserEntity(User user) {
-        return userRepository.saveAndFlush(user);
+        return userRepository.save(user);
     }
 
     public List<User> findAllUserEntities() {

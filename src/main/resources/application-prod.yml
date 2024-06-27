@@ -10,7 +10,7 @@ spring:
 
 
   liquibase:
-    change-log: classpath:database/changelog-prod.xml
+    change-log: classpath:database/changelog.xml
 
 
 jwt:

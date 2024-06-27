@@ -73,7 +73,7 @@ public class UserEndpoint {
 
         return response != null ?
                 ResponseEntity.ok(response) :
-                ResponseEntity.notFound().build();
+                ResponseEntity.badRequest().build();
 
     }
 
