@@ -30,7 +30,7 @@ public class UserInitData implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        if(userFacade.findAllUserEntities().size() > 1) {
+        if(userFacade.countUserEntities() > 1) {
            return;
        }
        createUsers();

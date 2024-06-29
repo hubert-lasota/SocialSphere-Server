@@ -11,6 +11,7 @@ public class UserProfilePicture {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "upp_id")
     private Long id;
 
     @Column(name = "image_type", nullable = false)

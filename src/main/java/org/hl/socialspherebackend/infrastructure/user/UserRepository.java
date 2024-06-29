@@ -31,14 +31,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = """
         select u.id, u.username, u.password,
             up.user_id, up.profile_picture_id, up.first_name, up.last_name, up.city, up.country,
-            upp.id, upp.image_type, upp.image 
-        from dbo.users u 
-        left join dbo.user_profile up 
-        on u.id = up.user_id 
-        left join dbo.user_profile_picture upp 
-        on up.profile_picture_id = upp.id
+            upp.upp_id, upp.image_type, upp.image
+        from dbo.users u
+        left join dbo.user_profile up
+        on u.id = up.user_id
+        left join dbo.user_profile_picture upp
+        on up.profile_picture_id = upp.upp_id
     """, nativeQuery = true)
     List<User> findUserHeaders();
-
 
 }

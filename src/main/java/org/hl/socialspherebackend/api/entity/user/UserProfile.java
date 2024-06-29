@@ -16,7 +16,7 @@ public class UserProfile {
     private User user;
 
     @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "profile_picture_id", referencedColumnName = "id")
+    @JoinColumn(name = "profile_picture_id", referencedColumnName = "upp_id")
     private UserProfilePicture profilePicture;
 
     @Column(name = "first_name")

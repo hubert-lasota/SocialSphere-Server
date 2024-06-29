@@ -1,7 +1,6 @@
 package org.hl.socialspherebackend.api.entity.user;
 
 import jakarta.persistence.*;
-import org.hl.socialspherebackend.api.entity.post.Post;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -38,9 +37,6 @@ public class User implements UserDetails {
 
     @OneToMany(mappedBy = "receiver", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> receivedFriendRequests = new HashSet<>();
-
-    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Post> posts = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinTable(
@@ -85,10 +81,6 @@ public class User implements UserDetails {
 
     public void appendReceivedFriendRequest(UserFriendRequest friendRequest) {
         this.receivedFriendRequests.add(friendRequest);
-    }
-
-    public void appendPost(Post post) {
-        this.posts.add(post);
     }
 
     @Override
@@ -161,10 +153,6 @@ public class User implements UserDetails {
 
     public void setUserProfileConfig(UserProfileConfig userProfileConfig) {
         this.userProfileConfig = userProfileConfig;
-    }
-
-    public Set<Post> getPosts() {
-        return posts;
     }
 
     @Override

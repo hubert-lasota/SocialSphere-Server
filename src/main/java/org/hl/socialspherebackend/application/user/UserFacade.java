@@ -326,6 +326,8 @@ public class UserFacade implements UserDetailsService {
         return UserFriendListResult.success(response, UserFriendListResult.Code.FOUND);
     }
 
+
+
     public Page<UserFriendResponse> findUserFriends(Long userId, int page, int size) {
         if(!existsUserById(userId)) {
             return Page.empty();
@@ -344,17 +346,15 @@ public class UserFacade implements UserDetailsService {
     }
 
     public SearchUsersResult findUsers(Long userId, final String containsString, Integer maxSize) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        if(userOpt.isEmpty()) {
+        if(!userRepository.existsById(userId)) {
             return SearchUsersResult.failure(SearchUsersResult.Code.USER_DOES_NOT_EXITS,
-                    "user with id = %d does not exits in database".formatted(userId));
+                    "User with id = %d does not exits in database".formatted(userId));
         }
-        User user = userOpt.get();
 
         List<User> userEntities = userRepository.findUserHeaders();
         if(userEntities.isEmpty()) {
             return SearchUsersResult.failure(SearchUsersResult.Code.USERS_NOT_FOUND,
-                    "there are no users in database");
+                    "There are no users in database");
         }
 
         List<User> userEntitiesWithProfiles = userEntities
@@ -364,18 +364,14 @@ public class UserFacade implements UserDetailsService {
 
         if(userEntitiesWithProfiles.isEmpty()) {
             return SearchUsersResult.failure(SearchUsersResult.Code.USERS_NOT_FOUND,
-                    "there are no users in database");
+                    "There are no users in database");
         }
 
         Pattern pattern = Pattern.compile("^" + containsString + ".*$", Pattern.CASE_INSENSITIVE);
 
         List<User> userEntitiesThatContainsFirstNameString = userEntitiesWithProfiles
                 .stream()
-                .filter(u -> {
-                    String foundUserFirstName = u.getUserProfile().getFirstName();
-                    Matcher matcher = pattern.matcher(foundUserFirstName);
-                    return matcher.matches();
-                })
+                .filter(u -> matchFirstName(pattern, u))
                 .toList();
 
         List<User> userEntitiesResponse = new ArrayList<>(maxSize);
@@ -388,18 +384,8 @@ public class UserFacade implements UserDetailsService {
 
         if(userEntitiesResponse.size() < maxSize) {
             List<User> userEntitiesThatContainsLastNameString = userEntitiesWithProfiles.stream()
-                    .filter(u -> {
-                        for(User ue : userEntitiesThatContainsFirstNameString) {
-                            if(ue.equals(u)) return false;
-                        }
-                        return true;
-                    })
-                    .filter(ue -> {
-                        String foundUserLastName = ue.getUserProfile().getLastName();
-                        Matcher matcher = pattern.matcher(foundUserLastName);
-                        return matcher.matches();
-                    })
-
+                    .filter(u -> checkUserInList(userEntitiesThatContainsFirstNameString, u))
+                    .filter(u -> matchLastName(pattern, u))
                     .toList();
 
             for(int i = userEntitiesResponse.size(); i < maxSize && i < userEntitiesThatContainsLastNameString.size(); i++) {
@@ -409,17 +395,7 @@ public class UserFacade implements UserDetailsService {
 
         List<SearchUsersResponse> response = userEntitiesResponse
                 .stream()
-                .map(u -> {
-                    UserProfile profileResponse = u.getUserProfile();
-                    String firstName = profileResponse.getFirstName();
-                    String lastName = profileResponse.getLastName();
-                    byte[] profilePicture = null;
-                    if(profileResponse.getProfilePicture() != null) {
-                        profilePicture = FileUtils.decompressFile(profileResponse.getProfilePicture().getImage());
-                    }
-
-                    return new SearchUsersResponse(u.getId(), firstName, lastName, profilePicture);
-                })
+                .map(UserMapper::fromUserEntityToSearchUsersResponse)
                 .toList();
 
 
@@ -431,6 +407,27 @@ public class UserFacade implements UserDetailsService {
         return SearchUsersResult.success(response, SearchUsersResult.Code.FOUND);
     }
 
+    private boolean matchFirstName(Pattern pattern, User user) {
+        String firstName = user.getUserProfile().getFirstName();
+        return matchUserField(pattern, firstName);
+    }
+
+    private boolean matchLastName(Pattern pattern, User user) {
+        String lastName = user.getUserProfile().getLastName();
+        return matchUserField(pattern, lastName);
+    }
+
+    private boolean matchUserField(Pattern pattern, String matcher) {
+        Matcher m = pattern.matcher(matcher);
+        return m.matches();
+    }
+
+    private boolean checkUserInList(List<User> users, User user) {
+        for(User u : users) {
+            if(u.equals(user)) return false;
+        }
+        return true;
+    }
 
     public byte[] findUserProfilePictureByUserId(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
@@ -560,6 +557,10 @@ public class UserFacade implements UserDetailsService {
 
     public List<User> findAllUserEntities() {
         return userRepository.findAll();
+    }
+
+    public Long countUserEntities() {
+        return userRepository.count();
     }
 
 }

@@ -2,16 +2,14 @@ package org.hl.socialspherebackend.application.user;
 
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
-import org.hl.socialspherebackend.api.dto.user.response.UserFriendRequestResponse;
-import org.hl.socialspherebackend.api.dto.user.response.UserProfileConfigResponse;
-import org.hl.socialspherebackend.api.dto.user.response.UserProfileResponse;
-import org.hl.socialspherebackend.api.dto.user.response.UserResponse;
+import org.hl.socialspherebackend.api.dto.user.response.*;
 import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.api.entity.user.UserFriendRequest;
 import org.hl.socialspherebackend.api.entity.user.UserProfile;
 import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
+import org.hl.socialspherebackend.application.util.FileUtils;
 
-public class UserMapper {
+class UserMapper {
 
     private UserMapper() { }
 
@@ -21,6 +19,18 @@ public class UserMapper {
                 entity.getId(),
                 entity.getUsername()
         );
+    }
+
+    public static SearchUsersResponse fromUserEntityToSearchUsersResponse(User entity) {
+        UserProfile profileResponse = entity.getUserProfile();
+        String firstName = profileResponse.getFirstName();
+        String lastName = profileResponse.getLastName();
+        byte[] profilePicture = null;
+        if(profileResponse.getProfilePicture() != null) {
+            profilePicture = FileUtils.decompressFile(profileResponse.getProfilePicture().getImage());
+        }
+
+        return new SearchUsersResponse(entity.getId(), firstName, lastName, profilePicture);
     }
 
     public static UserProfileResponse fromUserProfileEntityToResponse(UserProfile userProfile, byte[] image) {

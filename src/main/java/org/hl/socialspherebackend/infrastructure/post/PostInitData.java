@@ -33,7 +33,7 @@ public class PostInitData implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        if(!postFacade.findAllPostEntities().isEmpty()) {
+        if(postFacade.countPostEntities() > 1) {
             return;
         }
         createPosts();
@@ -64,8 +64,8 @@ public class PostInitData implements InitializingBean {
                     post.setImages(postImages);
                 }
 
-                u.getPosts().add(post);
-                userFacade.saveUserEntity(u);
+
+                postFacade.savePostEntity(post);
             }
         });
     }

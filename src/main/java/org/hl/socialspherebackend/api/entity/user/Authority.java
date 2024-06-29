@@ -9,11 +9,11 @@ import java.util.Objects;
 public class Authority implements GrantedAuthority {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @MapsId
     @ManyToOne(optional = false)
-    @JoinColumn(name="user_id", referencedColumnName = "id")
+    @JoinColumn(name="user_id", referencedColumnName = "id", nullable = false)
     private User user;
 
     @Column(name = "authority", nullable = false)

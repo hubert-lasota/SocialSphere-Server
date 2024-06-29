@@ -44,6 +44,9 @@ public class UserProfileResult {
         return !isSuccess();
     }
 
+    public UserProfileResponse getUserProfileResponse() {
+        return userProfile;
+    }
 
     @Override
     public String toString() {
