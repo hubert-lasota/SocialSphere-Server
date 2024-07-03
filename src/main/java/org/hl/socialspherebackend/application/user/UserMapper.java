@@ -33,6 +33,14 @@ class UserMapper {
         return new SearchUsersResponse(entity.getId(), firstName, lastName, profilePicture);
     }
 
+    public static UserFriendResponse fromUserEntityToUserFriendResponse(User entity) {
+        UserResponse userResponse = UserMapper.fromUserEntityToResponse(entity);
+        byte[] profilePicture = FileUtils.decompressFile(entity.getUserProfile().getProfilePicture().getImage());
+        UserProfileResponse userProfile = UserMapper.fromUserProfileEntityToResponse(entity.getUserProfile(), profilePicture);
+        UserProfileConfigResponse userProfileConfig = UserMapper.fromUserProfileConfigEntityToResponse(entity.getUserProfileConfig());
+        return new UserFriendResponse(userResponse, userProfile, userProfileConfig);
+    }
+
     public static UserProfileResponse fromUserProfileEntityToResponse(UserProfile userProfile, byte[] image) {
         return new UserProfileResponse(
                 userProfile.getFirstName(),

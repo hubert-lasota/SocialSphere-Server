@@ -23,22 +23,22 @@ public class User implements UserDetails {
     @Column(name = "password", nullable = false)
     private String password;
 
-    @OneToOne(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private UserProfile userProfile;
 
-    @OneToOne(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private UserProfileConfig userProfileConfig;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Authority> authorities = new HashSet<>();
 
-    @OneToMany(mappedBy = "sender", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "sender", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> sentFriendRequests = new HashSet<>();
 
-    @OneToMany(mappedBy = "receiver", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "receiver", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> receivedFriendRequests = new HashSet<>();
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinTable(
             name = "user_friend_list",
             joinColumns = @JoinColumn(name = "user_id"),
@@ -81,6 +81,16 @@ public class User implements UserDetails {
 
     public void appendReceivedFriendRequest(UserFriendRequest friendRequest) {
         this.receivedFriendRequests.add(friendRequest);
+    }
+
+    public void appendFriend(User friend) {
+        this.userFriendList.add(friend);
+        friend.userFriendList.add(friend);
+    }
+
+    public void removeFriend(User friend) {
+        this.userFriendList.remove(friend);
+        friend.userFriendList.remove(friend);
     }
 
     @Override
@@ -153,6 +163,10 @@ public class User implements UserDetails {
 
     public void setUserProfileConfig(UserProfileConfig userProfileConfig) {
         this.userProfileConfig = userProfileConfig;
+    }
+
+    public Set<User> getUserFriendList() {
+        return userFriendList;
     }
 
     @Override

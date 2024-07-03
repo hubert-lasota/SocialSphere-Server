@@ -9,10 +9,10 @@ public class UserResult {
     private final UserResponse user;
 
     @JsonProperty
-    private final UserProfileResponse userProfileResponse;
+    private final UserProfileResponse userProfile;
 
     @JsonProperty
-    private final UserProfileConfigResponse userProfileConfigResponse;
+    private final UserProfileConfigResponse userProfileConfig;
 
     @JsonProperty
     private final Code code;
@@ -24,13 +24,13 @@ public class UserResult {
 
 
     private UserResult(UserResponse user,
-                       UserProfileResponse userProfileResponse,
-                       UserProfileConfigResponse userProfileConfigResponse,
+                       UserProfileResponse userProfile,
+                       UserProfileConfigResponse userProfileConfig,
                        Code code,
                        String message) {
         this.user = user;
-        this.userProfileResponse = userProfileResponse;
-        this.userProfileConfigResponse = userProfileConfigResponse;
+        this.userProfile = userProfile;
+        this.userProfileConfig = userProfileConfig;
         this.code = code;
         this.message = message;
     }
@@ -60,8 +60,8 @@ public class UserResult {
     public String toString() {
         return "UserResult{" +
                 "user=" + user +
-                ", userProfileResponse=" + userProfileResponse +
-                ", userProfileConfigResponse=" + userProfileConfigResponse +
+                ", userProfileResponse=" + userProfile +
+                ", userProfileConfigResponse=" + userProfileConfig +
                 ", code=" + code +
                 ", message='" + message + '\'' +
                 '}';

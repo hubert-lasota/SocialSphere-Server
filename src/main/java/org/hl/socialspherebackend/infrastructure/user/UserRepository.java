@@ -22,12 +22,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = "select id, username, password from dbo.users where username = :username", nativeQuery = true)
     Optional<User> findByUsername(String username);
 
-    @Query(value = "select * from user_friend_list where user_id = :userId", nativeQuery = true)
-    Optional<List<User>> findUserFriends(Long userId);
-
-    @Query(value = "select * from user_friend_list where user_id = :userId", nativeQuery = true)
-    Page<User> findUserFriends(Long userId, Pageable pageable);
-
     @Query(value = """
         select u.id, u.username, u.password,
             up.user_id, up.profile_picture_id, up.first_name, up.last_name, up.city, up.country,

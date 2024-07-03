@@ -13,5 +13,6 @@ public record PostResponse(Long id,
                            Long likeCount,
                            Long commentCount,
                            Instant createdAt,
-                           Instant updatedAt) {
+                           Instant updatedAt,
+                           boolean isLiked) {
 }

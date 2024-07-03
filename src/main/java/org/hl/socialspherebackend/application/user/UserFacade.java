@@ -9,6 +9,7 @@ import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -296,53 +297,47 @@ public class UserFacade implements UserDetailsService {
     }
 
     public UserFriendListResult findUserFriends(Long userId) {
-        if(!existsUserById(userId)) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
             return UserFriendListResult.failure(
                     UserFriendListResult.Code.USER_NOT_FOUND,
                     "User with id = %d does not exits in database!".formatted(userId)
             );
         }
 
-        Optional<List<User>> userFriendsOpt = userRepository.findUserFriends(userId);
-        if(userFriendsOpt.isEmpty() || userFriendsOpt.get().isEmpty()) {
+        User user = userOpt.get();
+
+        Set<User> userFriends = user.getUserFriendList();
+        if(userFriends.isEmpty()) {
             return UserFriendListResult.failure(
                     UserFriendListResult.Code.NOT_FOUND,
                     "User with id = %d does not have friends!".formatted(userId)
             );
         }
 
-        List<User> userFriends = userFriendsOpt.get();
-        List<UserFriendResponse> userFriendResponses = new ArrayList<>();
-        userFriends.forEach(u -> {
-            UserResponse user = UserMapper.fromUserEntityToResponse(u);
-            byte[] profilePicture = u.getUserProfile().getProfilePicture().getImage();
-            UserProfileResponse userProfile = UserMapper.fromUserProfileEntityToResponse(u.getUserProfile(), profilePicture);
-            UserProfileConfigResponse userProfileConfig = UserMapper.fromUserProfileConfigEntityToResponse(u.getUserProfileConfig());
-            userFriendResponses.add(new UserFriendResponse(user, userProfile, userProfileConfig));
-        });
+        Set<UserFriendResponse> userFriendsResponse = userFriends
+                .stream()
+                .map(UserMapper::fromUserEntityToUserFriendResponse)
+                .collect(toSet());
 
-
-        UserFriendListResponse response = new UserFriendListResponse(userFriendResponses);
+        UserFriendSetResponse response = new UserFriendSetResponse(userFriendsResponse);
         return UserFriendListResult.success(response, UserFriendListResult.Code.FOUND);
     }
 
-
-
     public Page<UserFriendResponse> findUserFriends(Long userId, int page, int size) {
-        if(!existsUserById(userId)) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
             return Page.empty();
         }
-
+        User user = userOpt.get();
+        List<User> userFriends = List.copyOf(user.getUserFriendList());
+        if(userFriends.isEmpty()) {
+            return Page.empty();
+        }
         Pageable pageable = PageRequest.of(page, size);
-        Page<User> userPage = userRepository.findUserFriends(userId, pageable);
+        Page<User> userPage = new PageImpl<>(userFriends, pageable, userFriends.size());
 
-        return userPage.map(u -> {
-            UserResponse user = UserMapper.fromUserEntityToResponse(u);
-            byte[] profilePicture = u.getUserProfile().getProfilePicture().getImage();
-            UserProfileResponse userProfile = UserMapper.fromUserProfileEntityToResponse(u.getUserProfile(), profilePicture);
-            UserProfileConfigResponse userProfileConfig = UserMapper.fromUserProfileConfigEntityToResponse(u.getUserProfileConfig());
-            return new UserFriendResponse(user, userProfile, userProfileConfig);
-        });
+        return userPage.map(UserMapper::fromUserEntityToUserFriendResponse);
     }
 
     public SearchUsersResult findUsers(Long userId, final String containsString, Integer maxSize) {

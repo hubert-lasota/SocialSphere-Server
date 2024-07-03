@@ -104,7 +104,7 @@ public class UserEndpoint {
         Page<UserFriendResponse> userFriendPage = userFacade.findUserFriends(userId, page, size);
 
         return userFriendPage.isEmpty() ?
-                new ResponseEntity<>(userFriendPage, HttpStatus.NOT_FOUND) :
+                new ResponseEntity<>(userFriendPage, HttpStatus.NO_CONTENT) :
                 new ResponseEntity<>(userFriendPage, HttpStatus.FOUND);
     }
 

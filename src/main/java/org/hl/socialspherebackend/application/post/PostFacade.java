@@ -52,7 +52,7 @@ public class PostFacade {
         Set<PostImage> postImages = PostMapper.fromRequestToPostImageEntities(request.images());
         postImages.forEach(img -> {
             img.setPost(post);
-            post.getImages().add(img);
+            post.appendPostImage(img);
         });
 
         postRepository.save(post);
@@ -204,10 +204,6 @@ public class PostFacade {
 
     public Post savePostEntity(Post entity) {
         return postRepository.save(entity);
-    }
-
-    public List<Post> findAllPostEntities() {
-        return postRepository.findAll();
     }
 
     public Long countPostEntities() {
