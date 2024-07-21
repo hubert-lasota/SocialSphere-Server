@@ -34,6 +34,10 @@ public class UserProfilePicture {
         return id;
     }
 
+    public void setImageType(String imageType) {
+        this.imageType = imageType;
+    }
+
     public String getImageType() {
         return imageType;
     }

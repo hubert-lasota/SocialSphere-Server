@@ -10,8 +10,8 @@ import org.springframework.context.annotation.Profile;
 public class PostConfig {
 
     @Bean
-    public PostFacade postFacade(PostRepository postRepository, UserFacade userFacade) {
-        return new PostFacade(postRepository, userFacade);
+    public PostFacade postFacade(PostRepository postRepository, PostCommentRepository postCommentRepository, UserFacade userFacade) {
+        return new PostFacade(postRepository, postCommentRepository, userFacade);
     }
 
     @Profile("dev")

@@ -46,8 +46,11 @@ public class UserInitData implements InitializingBean {
         Faker faker = new Faker();
         User user1 = new User("user", passwordEncoder.encode("test"));
         user1.appendAuthority(new Authority(user1, "USER"));
+        User user2 = new User("user2", passwordEncoder.encode("test"));
+        user1.appendAuthority(new Authority(user1, "USER"));
         userFacade.saveUserEntity(user1);
-        for (int i = 0; i < 49; i++) {
+        userFacade.saveUserEntity(user2);
+        for (int i = 0; i < 48; i++) {
             String username = faker.name().username();
             String password = passwordEncoder.encode(faker.internet().password());
             User user = new User(username, password);

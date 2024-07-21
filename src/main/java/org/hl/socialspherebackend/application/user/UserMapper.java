@@ -9,19 +9,20 @@ import org.hl.socialspherebackend.api.entity.user.UserProfile;
 import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
 import org.hl.socialspherebackend.application.util.FileUtils;
 
-class UserMapper {
+public class UserMapper {
 
     private UserMapper() { }
 
 
-    public static UserResponse fromUserEntityToResponse(User entity) {
+    public static UserResponse fromUserEntityToResponse(User entity, RelationshipStatus status) {
         return new UserResponse(
                 entity.getId(),
-                entity.getUsername()
+                entity.getUsername(),
+                status
         );
     }
 
-    public static SearchUsersResponse fromUserEntityToSearchUsersResponse(User entity) {
+    public static SearchUsersResponse fromUserEntityToSearchUsersResponse(User entity, RelationshipStatus status) {
         UserProfile profileResponse = entity.getUserProfile();
         String firstName = profileResponse.getFirstName();
         String lastName = profileResponse.getLastName();
@@ -30,11 +31,11 @@ class UserMapper {
             profilePicture = FileUtils.decompressFile(profileResponse.getProfilePicture().getImage());
         }
 
-        return new SearchUsersResponse(entity.getId(), firstName, lastName, profilePicture);
+        return new SearchUsersResponse(entity.getId(), firstName, lastName, profilePicture, status);
     }
 
-    public static UserFriendResponse fromUserEntityToUserFriendResponse(User entity) {
-        UserResponse userResponse = UserMapper.fromUserEntityToResponse(entity);
+    public static UserFriendResponse fromUserEntityToUserFriendResponse(User entity, RelationshipStatus status) {
+        UserResponse userResponse = UserMapper.fromUserEntityToResponse(entity, status);
         byte[] profilePicture = FileUtils.decompressFile(entity.getUserProfile().getProfilePicture().getImage());
         UserProfileResponse userProfile = UserMapper.fromUserProfileEntityToResponse(entity.getUserProfile(), profilePicture);
         UserProfileConfigResponse userProfileConfig = UserMapper.fromUserProfileConfigEntityToResponse(entity.getUserProfileConfig());
@@ -67,7 +68,7 @@ class UserMapper {
 
     public static UserProfileConfig fromRequestToUserProfileConfigEntity(UserProfileConfigRequest request, User user) {
       return new UserProfileConfig(
-              request.userProfilePrivacyLevel(),
+              request.profilePrivacyLevel(),
               user
       );
     }

@@ -3,10 +3,7 @@ package org.hl.socialspherebackend.infrastructure.post;
 import org.hl.socialspherebackend.api.dto.post.request.PostCommentRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostLikeRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostRequest;
-import org.hl.socialspherebackend.api.dto.post.response.PostCommentResult;
-import org.hl.socialspherebackend.api.dto.post.response.PostLikeResult;
-import org.hl.socialspherebackend.api.dto.post.response.PostResponse;
-import org.hl.socialspherebackend.api.dto.post.response.PostResult;
+import org.hl.socialspherebackend.api.dto.post.response.*;
 import org.hl.socialspherebackend.application.post.PostFacade;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -33,7 +30,7 @@ public class PostEndpoint {
                 ResponseEntity.badRequest().body(postResult);
     }
 
-    @PostMapping("/comment")
+    @PostMapping(value = "/comment")
     public ResponseEntity<PostCommentResult> createPostComment(@RequestBody PostCommentRequest request) {
         PostCommentResult postCommentResult = postFacade.addCommentToPost(request);
 
@@ -43,7 +40,7 @@ public class PostEndpoint {
     }
 
 
-    @PostMapping("/like/add")
+    @PostMapping(value = "/like/add")
     public ResponseEntity<PostLikeResult> addLikeToPost(@RequestBody PostLikeRequest request) {
         PostLikeResult postLikeResult = postFacade.addLikeToPost(request);
 
@@ -52,7 +49,24 @@ public class PostEndpoint {
                 ResponseEntity.badRequest().body(postLikeResult);
     }
 
+
     @GetMapping
+    public ResponseEntity<Page<PostResponse>> findUserPosts(
+            @RequestParam Long currentUserId,
+            @RequestParam(required = false, defaultValue = "-1") Long userToCheckId,
+            @RequestParam Integer page,
+            @RequestParam Integer size
+    ) {
+        Page<PostResponse> response = userToCheckId.equals(-1L) ?
+                postFacade.findCurrentUserPosts(currentUserId, page, size) :
+                postFacade.findUserPosts(currentUserId, userToCheckId, page, size);
+
+        return response.isEmpty() ?
+                new ResponseEntity<>(response, HttpStatus.NO_CONTENT) :
+                new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    
+    @GetMapping("/recent")
     public ResponseEntity<Page<PostResponse>> findRecentPostsAvailableForUser(
             @RequestParam Long userId,
             @RequestParam Integer page,
@@ -65,16 +79,26 @@ public class PostEndpoint {
                 new ResponseEntity<>(pageOfPostResponse, HttpStatus.OK);
     }
 
+    @GetMapping(value = "/comment")
+    public ResponseEntity<Page<PostCommentResponse>> findPostComments(
+            @RequestParam Long postId,
+            @RequestParam Integer page,
+            @RequestParam Integer size
+    ) {
+        Page<PostCommentResponse> response = postFacade.findPostComments(postId, page, size);
 
+        return response.isEmpty() ?
+                new ResponseEntity<>(response, HttpStatus.NO_CONTENT) :
+                new ResponseEntity<>(response, HttpStatus.OK);
+    }
 
-    @DeleteMapping("/like/remove")
-    public ResponseEntity<PostLikeResult> removeLikeToPost(@RequestBody PostLikeRequest request) {
-        PostLikeResult postLikeResult = postFacade.removeLikeToPost(request);
+    @DeleteMapping(value = "/like/remove")
+    public ResponseEntity<PostLikeResult> removeLikeFromPost(@RequestParam Long postId, @RequestParam Long userId) {
+        PostLikeResult postLikeResult = postFacade.removeLikeFromPost(postId, userId);
 
         return postLikeResult.isSuccess() ?
                 ResponseEntity.ok(postLikeResult) :
                 ResponseEntity.badRequest().body(postLikeResult);
     }
-
 
 }

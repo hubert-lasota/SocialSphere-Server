@@ -1,5 +1,6 @@
 package org.hl.socialspherebackend.application.user;
 
+import org.hl.socialspherebackend.api.dto.user.request.UserFriendRequestDto;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.*;
@@ -49,19 +50,19 @@ public class UserFacade implements UserDetailsService {
         throw new UsernameNotFoundException("Invalid credentials");
     }
 
-    public UserFriendRequestResult sendFriendRequest(Long senderId, Long receiverId) {
-        Optional<User> senderOpt = userRepository.findById(senderId);
-        Optional<User> receiverOpt = userRepository.findById(receiverId);
+    public UserFriendRequestResult sendFriendRequest(UserFriendRequestDto request) {
+        Optional<User> senderOpt = userRepository.findById(request.senderId());
+        Optional<User> receiverOpt = userRepository.findById(request.receiverId());
         if(senderOpt.isEmpty()) {
             return UserFriendRequestResult.failure(
                     UserFriendRequestResult.Code.SENDER_NOT_FOUND,
-                    "sender with id = %d does not exits in database!".formatted(senderId)
+                    "sender with id = %d does not exits in database!".formatted(request.senderId())
             );
         }
         if(receiverOpt.isEmpty()) {
             return UserFriendRequestResult.failure(
                     UserFriendRequestResult.Code.RECEIVER_NOT_FOUND,
-                    "receiver with id = %d does not exits in database!".formatted(receiverId)
+                    "receiver with id = %d does not exits in database!".formatted(request.receiverId())
             );
         }
         User sender = senderOpt.get();
@@ -79,13 +80,13 @@ public class UserFacade implements UserDetailsService {
         return UserFriendRequestResult.success(response, UserFriendRequestResult.Code.SENT);
     }
 
-    public UserFriendRequestResult acceptFriendRequest(Long senderId, Long receiverId) {
-      return responseToFriendRequest(senderId, receiverId, UserFriendRequestStatus.ACCEPTED);
+    public UserFriendRequestResult acceptFriendRequest(UserFriendRequestDto request) {
+      return responseToFriendRequest(request.senderId(), request.receiverId(), UserFriendRequestStatus.ACCEPTED);
     }
 
 
-    public UserFriendRequestResult rejectFriendRequest(Long senderId, Long receiverId) {
-        return responseToFriendRequest(senderId, receiverId, UserFriendRequestStatus.REJECTED);
+    public UserFriendRequestResult rejectFriendRequest(UserFriendRequestDto request) {
+        return responseToFriendRequest(request.senderId(), request.receiverId(), UserFriendRequestStatus.REJECTED);
     }
 
     private UserFriendRequestResult responseToFriendRequest(Long senderId,
@@ -217,14 +218,20 @@ public class UserFacade implements UserDetailsService {
     }
 
 
-    public UserResult findUserById(Long userId) {
+    public UserResult findUserById(Long userId, Long currentUserId) {
         Optional<User> userOpt = findUserEntityById(userId);
         if(userOpt.isEmpty()) {
             return UserResult.failure(UserResult.Code.NOT_FOUND,
                     "User with id = %d does not exits in database!".formatted(userId));
         }
-
         User user = userOpt.get();
+
+        RelationshipStatus relationshipStatus = null;
+        if(currentUserId != null) {
+            Optional<User> currentUserOpt = findUserEntityById(currentUserId);
+            User currentUser = currentUserOpt.get();
+            relationshipStatus = getRelationshipStatusFromUser(currentUser, user);
+        }
 
         UserProfile userProfile = user.getUserProfile();
         UserProfilePicture userProfilePicture = userProfile.getProfilePicture();
@@ -238,7 +245,7 @@ public class UserFacade implements UserDetailsService {
         UserProfileConfig userProfileConfig = user.getUserProfileConfig();
         UserProfileConfigResponse userProfileConfigResponse = UserMapper.fromUserProfileConfigEntityToResponse(userProfileConfig);
 
-        UserResponse userResponse = UserMapper.fromUserEntityToResponse(user);
+        UserResponse userResponse = UserMapper.fromUserEntityToResponse(user, relationshipStatus);
 
         return UserResult.success(userResponse,
                 userProfileResponse,
@@ -317,7 +324,7 @@ public class UserFacade implements UserDetailsService {
 
         Set<UserFriendResponse> userFriendsResponse = userFriends
                 .stream()
-                .map(UserMapper::fromUserEntityToUserFriendResponse)
+                .map(u -> UserMapper.fromUserEntityToUserFriendResponse(u, RelationshipStatus.FRIEND))
                 .collect(toSet());
 
         UserFriendSetResponse response = new UserFriendSetResponse(userFriendsResponse);
@@ -334,17 +341,41 @@ public class UserFacade implements UserDetailsService {
         if(userFriends.isEmpty()) {
             return Page.empty();
         }
-        Pageable pageable = PageRequest.of(page, size);
-        Page<User> userPage = new PageImpl<>(userFriends, pageable, userFriends.size());
 
-        return userPage.map(UserMapper::fromUserEntityToUserFriendResponse);
+        Page<User> userFriendsPage = createPageImpl(userFriends, page, size);
+        return userFriendsPage.map(u -> UserMapper.fromUserEntityToUserFriendResponse(u, RelationshipStatus.FRIEND));
+    }
+
+    public Page<UserFriendResponse> findCheckedUserFriends(Long currentUserId, Long userToCheckId, int page, int size) {
+        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
+        Optional<User> userToCheckOpt = userRepository.findById(userToCheckId);
+        if(currentUserOpt.isEmpty() || userToCheckOpt.isEmpty()) {
+            log.debug("current user or user to check does not exists in database!");
+            return Page.empty();
+        }
+        User currentUser = currentUserOpt.get();
+        User userToCheck = userToCheckOpt.get();
+
+        List<User> userToCheckFriends = List.copyOf(userToCheck.getUserFriendList());
+        if(userToCheckFriends.isEmpty()) {
+            return Page.empty();
+        }
+
+        Page<User> userToCheckFriendsPage = createPageImpl(userToCheckFriends, page, size);
+
+        return userToCheckFriendsPage.map(u -> {
+            RelationshipStatus relationshipStatus = getRelationshipStatusFromUser(currentUser, userToCheck);
+            return UserMapper.fromUserEntityToUserFriendResponse(u, relationshipStatus);
+        });
     }
 
     public SearchUsersResult findUsers(Long userId, final String containsString, Integer maxSize) {
-        if(!userRepository.existsById(userId)) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if(userOpt.isEmpty()) {
             return SearchUsersResult.failure(SearchUsersResult.Code.USER_DOES_NOT_EXITS,
                     "User with id = %d does not exits in database".formatted(userId));
         }
+        User currentUser = userOpt.get();
 
         List<User> userEntities = userRepository.findUserHeaders();
         if(userEntities.isEmpty()) {
@@ -390,7 +421,7 @@ public class UserFacade implements UserDetailsService {
 
         List<SearchUsersResponse> response = userEntitiesResponse
                 .stream()
-                .map(UserMapper::fromUserEntityToSearchUsersResponse)
+                .map(u -> UserMapper.fromUserEntityToSearchUsersResponse(u, getRelationshipStatusFromUser(currentUser, u)))
                 .toList();
 
 
@@ -485,11 +516,17 @@ public class UserFacade implements UserDetailsService {
         entity.setCountry(request.country());
 
         if(profilePicture != null) {
+            UserProfilePicture entityProfilePicture = entity.getProfilePicture();
             try {
-                String imgType = profilePicture.getOriginalFilename();
+                String imgType = profilePicture.getContentType();
                 byte[] compressedImg = FileUtils.compressFile(profilePicture.getBytes());
-                UserProfilePicture pic = new UserProfilePicture(imgType, compressedImg);
-                entity.setProfilePicture(pic);
+                if(entityProfilePicture == null) {
+                    entityProfilePicture = new UserProfilePicture(imgType, compressedImg);
+                } else {
+                    entityProfilePicture.setImage(compressedImg);
+                    entityProfilePicture.setImageType(imgType);
+                }
+                entity.setProfilePicture(entityProfilePicture);
             } catch (IOException exc) {
                 log.error("Error occurred with decompressing file - {}", profilePicture);
             }
@@ -526,9 +563,24 @@ public class UserFacade implements UserDetailsService {
     }
 
     private void updateUserProfileConfigEntity(UserProfileConfig entity, UserProfileConfigRequest request) {
-        entity.setUserProfilePrivacyLevel(request.userProfilePrivacyLevel());
+        entity.setUserProfilePrivacyLevel(request.profilePrivacyLevel());
     }
 
+    public boolean removeFromFriendList(Long userId, Long friendId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        Optional<User> friendOpt = userRepository.findById(friendId);
+        if(userOpt.isEmpty() && friendOpt.isEmpty()) {
+            log.debug("User or Friend is empty");
+            return false;
+        }
+        User user = userOpt.get();
+        User friend = friendOpt.get();
+
+        user.removeFriend(friend);
+        userRepository.save(user);
+        userRepository.save(friend);
+        return true;
+    }
 
     public Optional<User> findUserEntityById(Long userId) {
         return userRepository.findById(userId);
@@ -542,10 +594,6 @@ public class UserFacade implements UserDetailsService {
         return userRepository.existsByUsername(username);
     }
 
-    public boolean areUsersFriends(Long userId, Long friendId) {
-        return userRepository.areUsersFriends(userId, friendId);
-    }
-
     public User saveUserEntity(User user) {
         return userRepository.save(user);
     }
@@ -556,6 +604,34 @@ public class UserFacade implements UserDetailsService {
 
     public Long countUserEntities() {
         return userRepository.count();
+    }
+
+
+
+    private <T> Page<T> createPageImpl(List<T> list, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), list.size());
+        List<T> subList = list.subList(start, end);
+        return new PageImpl<>(subList, pageable, list.size());
+    }
+
+    private RelationshipStatus getRelationshipStatusFromUser(User currentUser, User user) {
+        RelationshipStatus relationshipStatus;
+
+        boolean isFriend = currentUser.getUserFriendList()
+                .stream()
+                .anyMatch(u -> u.equals(user));
+
+        if(user.equals(currentUser)) {
+            relationshipStatus = RelationshipStatus.YOU;
+        } else if(isFriend) {
+            relationshipStatus = RelationshipStatus.FRIEND;
+        } else {
+            relationshipStatus = RelationshipStatus.STRANGER;
+        }
+
+        return relationshipStatus;
     }
 
 }

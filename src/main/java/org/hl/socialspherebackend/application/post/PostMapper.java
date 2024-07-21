@@ -6,7 +6,6 @@ import org.hl.socialspherebackend.api.dto.user.response.UserProfileResponse;
 import org.hl.socialspherebackend.api.entity.post.Post;
 import org.hl.socialspherebackend.api.entity.post.PostComment;
 import org.hl.socialspherebackend.api.entity.post.PostImage;
-import org.hl.socialspherebackend.application.util.FileUtils;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,31 +15,27 @@ class PostMapper {
     private PostMapper() { }
 
 
-    public static PostResponse fromPostEntityToResponse(Post entity, UserProfileResponse userProfileResponse) {
-        Set<byte[]> images = entity.getImages()
-                .stream()
-                .map(PostImage::getImage)
-                .map(FileUtils::decompressFile)
-                .collect(Collectors.toSet());
-
+    public static PostResponse fromPostEntityToResponse(Post entity, Set<byte[]> postImages, UserProfileResponse userProfileResponse, boolean isLiked) {
         return new PostResponse(
                 entity.getId(),
                 entity.getUser().getId(),
                 userProfileResponse,
                 entity.getContent(),
-                images,
+                postImages,
                 entity.getLikeCount(),
                 entity.getCommentCount(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                isLiked
         );
     }
 
-    public static PostCommentResponse fromPostCommentEntityToResponse(PostComment entity) {
+    public static PostCommentResponse fromPostCommentEntityToResponse(PostComment entity, UserProfileResponse userProfileResponse) {
         return new PostCommentResponse(
                 entity.getId(),
                 entity.getPost().getId(),
                 entity.getCommentAuthor().getId(),
+                userProfileResponse,
                 entity.getContent(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()

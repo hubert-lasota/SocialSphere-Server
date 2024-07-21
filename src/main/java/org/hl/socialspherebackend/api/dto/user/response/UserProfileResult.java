@@ -44,6 +44,7 @@ public class UserProfileResult {
         return !isSuccess();
     }
 
+    @JsonIgnore
     public UserProfileResponse getUserProfileResponse() {
         return userProfile;
     }

@@ -1,5 +1,6 @@
 package org.hl.socialspherebackend.infrastructure.user;
 
+import org.hl.socialspherebackend.api.dto.user.request.UserFriendRequestDto;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.*;
@@ -46,11 +47,38 @@ public class UserEndpoint {
                 ResponseEntity.badRequest().body(userProfileConfigResult);
     }
 
+    @PostMapping("/friend/send")
+    public ResponseEntity<UserFriendRequestResult> sendFriendRequest(UserFriendRequestDto request) {
+        UserFriendRequestResult userFriendRequestResult = userFacade.sendFriendRequest(request);
 
+        return userFriendRequestResult.isSuccess() ?
+                ResponseEntity.ok(userFriendRequestResult) :
+                ResponseEntity.badRequest().body(userFriendRequestResult);
+    }
+
+
+    @PostMapping("/friend/accept")
+    public ResponseEntity<UserFriendRequestResult> acceptFriendRequest(UserFriendRequestDto request) {
+        UserFriendRequestResult userFriendRequestResult = userFacade.acceptFriendRequest(request);
+
+        return userFriendRequestResult.isSuccess() ?
+                ResponseEntity.ok(userFriendRequestResult) :
+                ResponseEntity.badRequest().body(userFriendRequestResult);
+    }
+
+    @PostMapping("/friend/reject")
+    public ResponseEntity<UserFriendRequestResult> rejectFriendRequest(UserFriendRequestDto request) {
+
+        UserFriendRequestResult userFriendRequestResult = userFacade.rejectFriendRequest(request);
+
+        return userFriendRequestResult.isSuccess() ?
+                ResponseEntity.ok(userFriendRequestResult) :
+                ResponseEntity.badRequest().body(userFriendRequestResult);
+    }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResult> findUserById(@PathVariable Long id) {
-        UserResult userResult = userFacade.findUserById(id);
+    public ResponseEntity<UserResult> findUserById(@PathVariable Long id, @RequestParam(required = false) Long currentUserId) {
+        UserResult userResult = userFacade.findUserById(id, currentUserId);
 
         return userResult.isSuccess() ?
                 ResponseEntity.ok(userResult) :
@@ -88,6 +116,7 @@ public class UserEndpoint {
 
     @GetMapping("/friend")
     public ResponseEntity<?> findUserFriends(
+            @RequestParam(required = false, defaultValue = "-1") Long currentUserId,
             @RequestParam Long userId,
             @RequestParam Integer page,
             @RequestParam Integer size
@@ -101,60 +130,37 @@ public class UserEndpoint {
                     ResponseEntity.badRequest().body(userFriendListResult);
         }
 
-        Page<UserFriendResponse> userFriendPage = userFacade.findUserFriends(userId, page, size);
+        Page<UserFriendResponse> userFriendPage;
+        if (currentUserId.equals(-1L)) {
+            userFriendPage = userFacade.findUserFriends(userId, page, size);
+        } else {
+            userFriendPage = userFacade.findCheckedUserFriends(currentUserId, userId, page, size);
+        }
 
         return userFriendPage.isEmpty() ?
                 new ResponseEntity<>(userFriendPage, HttpStatus.NO_CONTENT) :
-                new ResponseEntity<>(userFriendPage, HttpStatus.FOUND);
+                new ResponseEntity<>(userFriendPage, HttpStatus.OK);
     }
 
-    @GetMapping("/friend/send")
-    public ResponseEntity<UserFriendRequestResult> sendFriendRequest(
-            @RequestParam Long senderId,
-            @RequestParam Long receiverId
+    @GetMapping("/search")
+    public ResponseEntity<SearchUsersResult> searchFriends(
+            @RequestParam Long userId,
+            @RequestParam String containsString,
+            @RequestParam Integer maxSize
     ) {
+        SearchUsersResult searchUsersResult = userFacade.findUsers(userId, containsString, maxSize);
 
-        UserFriendRequestResult userFriendRequestResult = userFacade.sendFriendRequest(senderId, receiverId);
-
-        return userFriendRequestResult.isSuccess() ?
-                ResponseEntity.ok(userFriendRequestResult) :
-                ResponseEntity.badRequest().body(userFriendRequestResult);
-    }
-
-
-    @GetMapping("/friend/accept")
-    public ResponseEntity<UserFriendRequestResult> acceptFriendRequest(
-            @RequestParam Long senderId,
-            @RequestParam Long receiverId
-    ) {
-
-        UserFriendRequestResult userFriendRequestResult = userFacade.acceptFriendRequest(senderId, receiverId);
-
-        return userFriendRequestResult.isSuccess() ?
-                ResponseEntity.ok(userFriendRequestResult) :
-                ResponseEntity.badRequest().body(userFriendRequestResult);
-    }
-
-    @GetMapping("/friend/reject")
-    public ResponseEntity<UserFriendRequestResult> rejectFriendRequest(
-            @RequestParam Long senderId,
-            @RequestParam Long receiverId
-    ) {
-
-        UserFriendRequestResult userFriendRequestResult = userFacade.rejectFriendRequest(senderId, receiverId);
-
-        return userFriendRequestResult.isSuccess() ?
-                ResponseEntity.ok(userFriendRequestResult) :
-                ResponseEntity.badRequest().body(userFriendRequestResult);
+        return searchUsersResult.isSuccess() ?
+                ResponseEntity.ok(searchUsersResult) :
+                ResponseEntity.badRequest().body(searchUsersResult);
     }
 
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResult> updateUserProfile(
             @RequestParam Long userId,
-            @RequestParam("profilePicture") MultipartFile profilePicture,
-            @RequestBody UserProfileRequest request
+            @RequestPart("profilePicture") MultipartFile profilePicture,
+            @RequestPart("request") UserProfileRequest request
     ) {
-
         UserProfileResult userProfileResult = userFacade.updateUserProfile(userId, request, profilePicture);
 
         return userProfileResult.isSuccess() ?
@@ -175,19 +181,12 @@ public class UserEndpoint {
                 ResponseEntity.badRequest().body(userProfileConfigResult);
     }
 
+    @DeleteMapping("/friend/remove")
+    public ResponseEntity<?> removeFriendFromFriendList(@RequestParam Long userId, @RequestParam Long friendId) {
+        boolean isSuccess = userFacade.removeFromFriendList(userId, friendId);
 
-    @GetMapping("/search")
-    public ResponseEntity<SearchUsersResult> searchFriends(
-            @RequestParam Long userId,
-            @RequestParam String containsString,
-            @RequestParam Integer maxSize
-    ) {
-        SearchUsersResult searchUsersResult = userFacade.findUsers(userId, containsString, maxSize);
-
-        return searchUsersResult.isSuccess() ?
-                ResponseEntity.ok(searchUsersResult) :
-                ResponseEntity.badRequest().body(searchUsersResult);
+        return isSuccess ? ResponseEntity.ok(null)
+                : ResponseEntity.badRequest().body(null);
     }
-
 
 }

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class UserFriendRequestResult {
 
-    @JsonProperty
+    @JsonProperty(value = "response")
     private final UserFriendRequestResponse userFriendRequest;
 
     @JsonProperty
