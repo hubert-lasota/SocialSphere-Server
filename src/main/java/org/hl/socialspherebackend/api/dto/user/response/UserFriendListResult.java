@@ -6,30 +6,27 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class UserFriendListResult {
 
     @JsonProperty
-    private final UserFriendSetResponse friends;
+    private final UserFriendListResponse friends;
 
     @JsonProperty
-    private final Code code;
+    private final UserErrorCode code;
 
     @JsonProperty
     private final String message;
 
-    public enum Code {
-        FOUND, NOT_FOUND, USER_NOT_FOUND, USER_HAVE_NO_FRIENDS
-    }
 
-    private UserFriendListResult(UserFriendSetResponse friends, Code code, String message) {
+    private UserFriendListResult(UserFriendListResponse friends, UserErrorCode code, String message) {
         this.friends = friends;
         this.code = code;
         this.message = message;
     }
 
 
-    public static UserFriendListResult success(UserFriendSetResponse response, Code code) {
-        return new UserFriendListResult(response, code, null);
+    public static UserFriendListResult success(UserFriendListResponse response) {
+        return new UserFriendListResult(response, null, null);
     }
 
-    public static UserFriendListResult failure(Code code, String message) {
+    public static UserFriendListResult failure(UserErrorCode code, String message) {
         return new UserFriendListResult(null, code, message);
     }
 

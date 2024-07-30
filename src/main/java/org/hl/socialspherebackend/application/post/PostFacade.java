@@ -1,23 +1,23 @@
 package org.hl.socialspherebackend.application.post;
 
+import org.hl.socialspherebackend.api.dto.notification.response.PostUpdateDetails;
 import org.hl.socialspherebackend.api.dto.post.request.PostCommentRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostLikeRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostRequest;
 import org.hl.socialspherebackend.api.dto.post.response.*;
-import org.hl.socialspherebackend.api.dto.user.response.UserProfileResponse;
-import org.hl.socialspherebackend.api.dto.user.response.UserProfileResult;
+import org.hl.socialspherebackend.api.entity.notification.PostUpdateType;
 import org.hl.socialspherebackend.api.entity.post.Post;
 import org.hl.socialspherebackend.api.entity.post.PostComment;
 import org.hl.socialspherebackend.api.entity.post.PostImage;
 import org.hl.socialspherebackend.api.entity.user.User;
-import org.hl.socialspherebackend.api.entity.user.UserProfile;
 import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
 import org.hl.socialspherebackend.api.entity.user.UserProfilePrivacyLevel;
-import org.hl.socialspherebackend.application.user.UserFacade;
-import org.hl.socialspherebackend.application.user.UserMapper;
-import org.hl.socialspherebackend.application.util.FileUtils;
+import org.hl.socialspherebackend.application.notification.NotificationMapper;
+import org.hl.socialspherebackend.application.pattern.behavioral.Observable;
+import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
 import org.hl.socialspherebackend.infrastructure.post.PostCommentRepository;
 import org.hl.socialspherebackend.infrastructure.post.PostRepository;
+import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.*;
@@ -28,27 +28,46 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static java.util.stream.Collectors.toSet;
-
-public class PostFacade {
+public class PostFacade implements Observable<PostUpdateDetails> {
 
     private static final Logger log = LoggerFactory.getLogger(PostFacade.class);
 
     private final PostRepository postRepository;
     private final PostCommentRepository postCommentRepository;
-    private final UserFacade userFacade;
+    private final UserRepository userRepository;
+    private final Set<Observer<PostUpdateDetails>> observers;
 
-    public PostFacade(PostRepository postRepository, PostCommentRepository postCommentRepository, UserFacade userFacade) {
+    public PostFacade(PostRepository postRepository,
+                      PostCommentRepository postCommentRepository,
+                      UserRepository userRepository,
+                      Set<Observer<PostUpdateDetails>> observers) {
         this.postRepository = postRepository;
-        this.userFacade = userFacade;
+        this.userRepository = userRepository;
         this.postCommentRepository = postCommentRepository;
+        this.observers = observers;
+    }
+
+
+    @Override
+    public void addObserver(Observer<PostUpdateDetails> observer) {
+        observers.add(observer);
+    }
+
+    @Override
+    public void removeObserver(Observer<PostUpdateDetails> observer) {
+        observers.remove(observer);
+    }
+
+    @Override
+    public void notifyObservers(PostUpdateDetails subject) {
+        observers.forEach((observer) -> observer.update(subject));
     }
 
 
     public PostResult createPost(PostRequest request) {
-        Optional<User> userOpt = userFacade.findUserEntityById(request.userId());
+        Optional<User> userOpt = userRepository.findById(request.userId());
         if(userOpt.isEmpty()) {
-            return PostResult.failure(PostResult.Code.CANNOT_CREATE,
+            return PostResult.failure(PostErrorCode.USER_NOT_FOUND,
                     "Could not find user with id = %d in database!".formatted(request.userId()));
         }
         User user = userOpt.get();
@@ -57,7 +76,7 @@ public class PostFacade {
         Post post = new Post(request.content(), 0L, 0L, now, now, user);
 
         if(request.images() != null) {
-            Set<PostImage> postImages = PostMapper.fromRequestToPostImageEntities(request.images());
+            Set<PostImage> postImages = PostMapper.fromRequestToEntities(request.images());
             postImages.forEach(img -> {
                 img.setPost(post);
                 post.appendPostImage(img);
@@ -65,14 +84,14 @@ public class PostFacade {
         }
 
         postRepository.save(post);
-        PostResponse response = mapPostEntityToResponse(post, false);
-        return PostResult.success(response, PostResult.Code.CREATED);
+        PostResponse response = PostMapper.fromEntityToResponse(post, false);
+        return PostResult.success(response);
     }
 
     public PostCommentResult addCommentToPost(PostCommentRequest request) {
-        Optional<User> authorOpt = userFacade.findUserEntityById(request.authorId());
+        Optional<User> authorOpt = userRepository.findById(request.authorId());
         if(authorOpt.isEmpty()) {
-            return PostCommentResult.failure(PostCommentResult.Code.CANNOT_CREATE,
+            return PostCommentResult.failure(PostErrorCode.USER_NOT_FOUND,
                     "Could not find author with id = %d in database!".formatted(request.authorId()));
         }
 
@@ -80,7 +99,7 @@ public class PostFacade {
 
         Optional<Post> postOpt = postRepository.findById(request.postId());
         if(postOpt.isEmpty()) {
-            return PostCommentResult.failure(PostCommentResult.Code.CANNOT_CREATE,
+            return PostCommentResult.failure(PostErrorCode.USER_NOT_FOUND,
                     "Could not find post with id = %d in database!".formatted(request.postId()));
         }
 
@@ -95,16 +114,15 @@ public class PostFacade {
         // not postRepository.save() because it forces synchronization with the post_comment table, otherwise the post comment id will be null
         postCommentRepository.save(postComment);
 
-        UserProfileResponse authorProfileResponse = mapUserToUserProfileResponse(author);
-        PostCommentResponse response = PostMapper.fromPostCommentEntityToResponse(postComment, authorProfileResponse);
+        PostCommentResponse response = PostMapper.fromEntityToResponse(postComment);
         return PostCommentResult.success(response);
     }
 
     public PostLikeResult addLikeToPost(PostLikeRequest request) {
-        Optional<User> likedByOpt = userFacade.findUserEntityById(request.userId());
+        Optional<User> likedByOpt = userRepository.findById(request.userId());
 
         if(likedByOpt.isEmpty()) {
-            return PostLikeResult.failure(PostLikeResult.Code.USER_NOT_FOUND,
+            return PostLikeResult.failure(PostErrorCode.USER_NOT_FOUND,
                     "Could not find author with id = %d in database!".formatted(request.userId()));
         }
         User likedBy = likedByOpt.get();
@@ -112,7 +130,7 @@ public class PostFacade {
         Optional<Post> postOpt = postRepository.findById(request.postId());
 
         if(postOpt.isEmpty()) {
-            return PostLikeResult.failure(PostLikeResult.Code.POST_NOT_FOUND,
+            return PostLikeResult.failure(PostErrorCode.POST_NOT_FOUND,
                     "Could not find post with id = %d in database!".formatted(request.postId()));
         }
 
@@ -123,7 +141,7 @@ public class PostFacade {
                 .anyMatch(user -> user.equals(likedBy));
 
         if(isLikedByUser) {
-            return PostLikeResult.failure(PostLikeResult.Code.USER_ALREADY_LIKES_POST,
+            return PostLikeResult.failure(PostErrorCode.USER_ALREADY_LIKES_POST,
                     "User with id = %d already likes post with id = %d".formatted(likedBy.getId(), post.getId()));
         }
 
@@ -132,28 +150,30 @@ public class PostFacade {
         post.appendLikedBy(likedBy);
         postRepository.save(post);
 
+        notifyObservers(NotificationMapper.fromEntitiesToResponse(post, PostUpdateType.LIKE, likedBy));
+
         return PostLikeResult.success(post.getId(), likedBy.getId());
     }
 
 
     public PostLikeResult removeLikeFromPost(Long postId, Long userId) {
-        Optional<User> likedByOpt = userFacade.findUserEntityById(userId);
+        Optional<User> likedByOpt = userRepository.findById(userId);
 
         if(likedByOpt.isEmpty()) {
-            return PostLikeResult.failure(PostLikeResult.Code.USER_NOT_FOUND,
+            return PostLikeResult.failure(PostErrorCode.USER_NOT_FOUND,
                     "Could not find author with id = %d in database!".formatted(userId));
         }
         User likedBy = likedByOpt.get();
 
         Optional<Post> postOpt = postRepository.findById(postId);
         if(postOpt.isEmpty()) {
-            return PostLikeResult.failure(PostLikeResult.Code.POST_NOT_FOUND,
+            return PostLikeResult.failure(PostErrorCode.POST_NOT_FOUND,
                     "Could not find post with id = %d in database!".formatted(postId));
         }
 
         Post post = postOpt.get();
         if(postRepository.existsPostLikedBy(post.getId(), likedBy.getId()) < 0) {
-            return PostLikeResult.failure(PostLikeResult.Code.USER_DOES_NOT_LIKES_POST,
+            return PostLikeResult.failure(PostErrorCode.USER_DOES_NOT_LIKE_POST,
                     "User with id = %d does not likes post with id = %d".formatted(likedBy.getId(), post.getId()));
         }
 
@@ -166,8 +186,8 @@ public class PostFacade {
     }
 
     public Page<PostResponse> findUserPosts(Long currentUserId, Long userToCheckId, int page, int size) {
-        Optional<User> currentUserOpt = userFacade.findUserEntityById(currentUserId);
-        Optional<User> userToCheckOpt = userFacade.findUserEntityById(userToCheckId);
+        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
+        Optional<User> userToCheckOpt = userRepository.findById(userToCheckId);
         if(currentUserOpt.isEmpty()) {
             log.debug("Could not find user with id = {}", currentUserId);
             return Page.empty();
@@ -193,7 +213,7 @@ public class PostFacade {
             return Page.empty();
         }
 
-        boolean areUsersFriends = currentUser.getUserFriendList()
+        boolean areUsersFriends = currentUser.getFriends()
                 .stream()
                 .anyMatch(u -> u.equals(userToCheck));
 
@@ -206,12 +226,12 @@ public class PostFacade {
         Page<Post> posts = postRepository.findByUser(pageable, userToCheck);
         return posts.map(post -> {
             boolean isLiked = checkIfCurrentUserLikedPost(currentUser, post);
-            return mapPostEntityToResponse(post, isLiked);
+            return PostMapper.fromEntityToResponse(post, isLiked);
         });
     }
 
     public Page<PostResponse> findCurrentUserPosts(Long currentUserId, int page, int size) {
-        Optional<User> currentUserOpt = userFacade.findUserEntityById(currentUserId);
+        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
         if(currentUserOpt.isEmpty()) {
             log.debug("Could not find user with id = {}", currentUserId);
             return Page.empty();
@@ -222,12 +242,12 @@ public class PostFacade {
 
         return posts.map(post -> {
             boolean isLiked = checkIfCurrentUserLikedPost(currentUser, post);
-            return mapPostEntityToResponse(post, isLiked);
+            return PostMapper.fromEntityToResponse(post, isLiked);
         });
     }
 
     public Page<PostResponse> findRecentPostsAvailableForUser(Long userId, int page, int size) {
-        Optional<User> userOpt = userFacade.findUserEntityById(userId);
+        Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             log.debug("Could not find user with id = {}", userId);
             return Page.empty();
@@ -235,10 +255,10 @@ public class PostFacade {
         User user = userOpt.get();
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("created_at"));
-        Page<Post> posts = postRepository.findRecentPostsAvailableForUser(pageable, userId);
-        return posts.map(post -> {
+        Page<Post> postPage = postRepository.findRecentPostsAvailableForUser(pageable, userId);
+        return postPage.map(post -> {
             boolean isLiked = checkIfCurrentUserLikedPost(user, post);
-            return mapPostEntityToResponse(post, isLiked);
+            return PostMapper.fromEntityToResponse(post, isLiked);
         });
     }
 
@@ -256,55 +276,19 @@ public class PostFacade {
             return Page.empty();
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("created_at").descending());
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), comments.size());
 
         List<PostComment> sortedComments = comments.stream()
                 .sorted(Comparator.comparing(PostComment::getCreatedAt).reversed())
                 .toList();
 
+        Pageable pageable = PageRequest.of(page, size, Sort.by("created_at").descending());
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), comments.size());
 
-        List<PostComment> pagedComments = sortedComments.subList(start, end);
-        Page<PostComment> postCommentPage = new PageImpl<>(pagedComments, pageable, pagedComments.size());
+        List<PostComment> sortedCommentsSublist = sortedComments.subList(start, end);
+        Page<PostComment> postCommentPage = new PageImpl<>(sortedCommentsSublist, pageable, sortedComments.size());
 
-        return postCommentPage.map((postComment) -> PostMapper.fromPostCommentEntityToResponse(
-                postComment, mapUserToUserProfileResponse(postComment.getCommentAuthor())));
-    }
-
-    private UserProfileResponse mapUserToUserProfileResponse(User user) {
-        UserProfile userProfile = user.getUserProfile();
-        byte[] profilePicture = FileUtils.decompressFile(userProfile.getProfilePicture().getImage());
-        return UserMapper.fromUserProfileEntityToResponse(userProfile, profilePicture);
-    }
-
-    public Post savePostEntity(Post entity) {
-        return postRepository.save(entity);
-    }
-
-    public Long countPostEntities() {
-        return postRepository.count();
-    }
-
-    private PostResponse mapPostEntityToResponse(Post post, boolean isLiked) {
-        UserProfileResult userProfileResult = userFacade.findUserProfileByUserId(post.getUser().getId());
-        if(userProfileResult.isFailure()) {
-            throw new RuntimeException("User: %s has no profile".formatted(post.getUser()));
-        }
-
-        return PostMapper.fromPostEntityToResponse(
-                post,
-                decompressPostImages(post),
-                userProfileResult.getUserProfileResponse(),
-                isLiked);
-    }
-
-    private Set<byte[]> decompressPostImages(Post post) {
-        return post.getImages()
-                .stream()
-                .map(PostImage::getImage)
-                .map(FileUtils::decompressFile)
-                .collect(toSet());
+        return postCommentPage.map(PostMapper::fromEntityToResponse);
     }
 
     private boolean checkIfCurrentUserLikedPost(User user, Post post) {

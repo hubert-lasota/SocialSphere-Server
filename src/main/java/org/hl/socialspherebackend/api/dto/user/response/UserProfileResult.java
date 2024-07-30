@@ -9,29 +9,23 @@ public class UserProfileResult {
     private final UserProfileResponse userProfile;
 
     @JsonProperty
-    private final Code code;
+    private final UserErrorCode code;
 
     @JsonProperty
     private final String message;
 
-    public enum Code {
-        CREATED, CANNOT_CREATE,
-        USER_PROFILE_NOT_FOUND, USER_NOT_FOUND, FOUND,
-        UPDATED
-    }
-
-    private UserProfileResult(UserProfileResponse userProfile, Code code, String message) {
+    private UserProfileResult(UserProfileResponse userProfile, UserErrorCode code, String message) {
         this.userProfile = userProfile;
         this.code = code;
         this.message = message;
     }
 
 
-    public static UserProfileResult success(UserProfileResponse userProfileResponse, Code code) {
-        return new UserProfileResult(userProfileResponse, code, null);
+    public static UserProfileResult success(UserProfileResponse userProfileResponse) {
+        return new UserProfileResult(userProfileResponse, null, null);
     }
 
-    public static UserProfileResult failure(Code code, String message) {
+    public static UserProfileResult failure(UserErrorCode code, String message) {
         return new UserProfileResult(null, code, message);
     }
 
@@ -42,11 +36,6 @@ public class UserProfileResult {
     @JsonIgnore
     public boolean isFailure() {
         return !isSuccess();
-    }
-
-    @JsonIgnore
-    public UserProfileResponse getUserProfileResponse() {
-        return userProfile;
     }
 
     @Override

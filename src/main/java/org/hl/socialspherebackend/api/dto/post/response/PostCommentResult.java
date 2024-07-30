@@ -10,24 +10,22 @@ public class PostCommentResult {
     private final PostCommentResponse comment;
 
     @JsonProperty
-    private final Code code;
+    private final PostErrorCode code;
 
     @JsonProperty
     private final String message;
 
-    public enum Code { NOT_FOUND, CANNOT_CREATE, FOUND, CREATED }
-
-    private PostCommentResult(PostCommentResponse comment, Code code, String message) {
+    private PostCommentResult(PostCommentResponse comment, PostErrorCode code, String message) {
         this.comment = comment;
         this.code = code;
         this.message = message;
     }
 
     public static PostCommentResult success(PostCommentResponse comment) {
-        return new PostCommentResult(comment, Code.FOUND, null);
+        return new PostCommentResult(comment, null, null);
     }
 
-    public static PostCommentResult failure(Code code, String message) {
+    public static PostCommentResult failure(PostErrorCode code, String message) {
         return new PostCommentResult(null, code, message);
     }
 

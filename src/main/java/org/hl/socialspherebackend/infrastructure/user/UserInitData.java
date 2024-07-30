@@ -2,7 +2,6 @@ package org.hl.socialspherebackend.infrastructure.user;
 
 import com.github.javafaker.Faker;
 import org.hl.socialspherebackend.api.entity.user.*;
-import org.hl.socialspherebackend.application.user.UserFacade;
 import org.hl.socialspherebackend.application.util.FileUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,25 +11,23 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class UserInitData implements InitializingBean {
 
-    private final UserFacade userFacade;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserInitData(UserFacade userFacade, PasswordEncoder passwordEncoder) {
-        this.userFacade = userFacade;
+    public UserInitData(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        if(userFacade.countUserEntities() > 1) {
+        if(userRepository.count() > 0) {
            return;
        }
        createUsers();
@@ -48,29 +45,29 @@ public class UserInitData implements InitializingBean {
         user1.appendAuthority(new Authority(user1, "USER"));
         User user2 = new User("user2", passwordEncoder.encode("test"));
         user1.appendAuthority(new Authority(user1, "USER"));
-        userFacade.saveUserEntity(user1);
-        userFacade.saveUserEntity(user2);
+        userRepository.save(user1);
+        userRepository.save(user2);
         for (int i = 0; i < 48; i++) {
             String username = faker.name().username();
             String password = passwordEncoder.encode(faker.internet().password());
             User user = new User(username, password);
             user.appendAuthority(new Authority(user, "USER"));
-            userFacade.saveUserEntity(user);
+            userRepository.save(user);
         }
     }
 
     private void createAuthorities() {
-        List<User> users = userFacade.findAllUserEntities();
+        List<User> users = userRepository.findAll();
         users.forEach((u) -> {
             Authority authority = new Authority(u, "USER");
             u.appendAuthority(authority);
-            userFacade.saveUserEntity(u);
+            userRepository.save(u);
         });
     }
 
     private void createUserProfiles() {
         Faker faker = new Faker();
-        List<User> users = userFacade.findAllUserEntities();
+        List<User> users = userRepository.findAll();
 
         users.forEach((u) -> {
             String firstName = faker.name().firstName();
@@ -85,13 +82,13 @@ public class UserInitData implements InitializingBean {
                     u
             );
             u.setUserProfile(userProfile);
-            userFacade.saveUserEntity(u);
+            userRepository.save(u);
         });
     }
 
 
     private void createUserProfilePictures() throws IOException {
-        List<User> users = userFacade.findAllUserEntities();
+        List<User> users = userRepository.findAll();
 
         for (User u : users) {
             UserProfile up = u.getUserProfile();
@@ -100,32 +97,39 @@ public class UserInitData implements InitializingBean {
             UserProfilePicture userProfilePicture = new UserProfilePicture(imageType, compressedImg);
             up.setProfilePicture(userProfilePicture);
             u.setUserProfile(up);
-            userFacade.saveUserEntity(u);
+            userRepository.save(u);
         }
     }
 
     private void createUserProfileConfigs() {
         Faker faker = new Faker();
-        List<User> users = userFacade.findAllUserEntities();
+        List<User> users = userRepository.findAll();
 
         users.forEach((u) -> {
             UserProfilePrivacyLevel privacyLevel = faker.options().option(UserProfilePrivacyLevel.class);
             UserProfileConfig userProfileConfig = new UserProfileConfig(privacyLevel, u);
             u.setUserProfileConfig(userProfileConfig);
-            userFacade.saveUserEntity(u);
+            userRepository.save(u);
         });
     }
 
 
     private void assignRandomFriends() {
         Faker faker = new Faker();
-        List<User> users = userFacade.findAllUserEntities();
+        List<User> users = userRepository.findAll();
+        List<Long> userIds = new ArrayList<>();
         for (User user : users) {
-            Set<User> friends = IntStream.range(0, faker.number().numberBetween(1, 10))
-                    .mapToObj(i -> users.get(faker.number().numberBetween(0, 50)))
-                    .collect(Collectors.toSet());
-            user.setUserFriendList(friends);
-            userFacade.saveUserEntity(user);
+            Long userId = user.getId();
+            long randomId = faker.number().numberBetween(0, 50);
+            if(userIds.contains(randomId) || userIds.contains(userId)) continue;
+
+            userIds.add(userId);
+            userIds.add(randomId);
+            User randomUser = users.get((int) randomId);
+            if(!user.equals(randomUser)) {
+                user.appendFriend(randomUser);
+                userRepository.save(user);
+            }
         }
     }
 

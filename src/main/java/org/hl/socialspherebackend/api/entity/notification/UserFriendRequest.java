@@ -1,6 +1,7 @@
-package org.hl.socialspherebackend.api.entity.user;
+package org.hl.socialspherebackend.api.entity.notification;
 
 import jakarta.persistence.*;
+import org.hl.socialspherebackend.api.entity.user.User;
 
 import java.util.Objects;
 

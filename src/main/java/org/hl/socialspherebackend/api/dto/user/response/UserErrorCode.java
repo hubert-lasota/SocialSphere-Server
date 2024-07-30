@@ -1,0 +1,12 @@
+package org.hl.socialspherebackend.api.dto.user.response;
+
+public enum UserErrorCode {
+    USER_NOT_FOUND,
+    USERS_NOT_FOUND,
+    USER_PROFILE_NOT_FOUND,
+    USER_PROFILE_CONFIG_NOT_FOUND,
+    SEARCH_USERS_NOT_FOUND,
+    USER_HAS_NO_FRIENDS,
+    USER_PROFILE_ALREADY_EXISTS,
+    USER_PROFILE_CONFIG_ALREADY_EXISTS
+}

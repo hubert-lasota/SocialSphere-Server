@@ -10,28 +10,22 @@ public class LoginResult {
     private LoginResponse login;
 
     @JsonProperty
-    private Code code;
+    private AuthorizationErrorCode code;
 
     @JsonProperty
     private String message;
 
-    public enum Code {
-        CREATED, USERNAME_EXISTS, USERNAME_DOES_NOT_EXISTS,
-        SUCCESSFULLY_LOGGED_IN, VALID_USER, NOT_VALID_USER, NOT_VALID_USER_TOKEN,
-        REFRESH_USER_TOKEN
-    }
-
-    private LoginResult(LoginResponse response, Code code, String message) {
+    private LoginResult(LoginResponse response, AuthorizationErrorCode code, String message) {
         this.login = response;
         this.code = code;
         this.message = message;
     }
 
-    public static LoginResult success(LoginResponse response, Code code) {
-        return new LoginResult(response, code, null);
+    public static LoginResult success(LoginResponse response) {
+        return new LoginResult(response, null, null);
     }
 
-    public static LoginResult failure(Code code, String message) {
+    public static LoginResult failure(AuthorizationErrorCode code, String message) {
         return new LoginResult(null, code, message);
     }
 

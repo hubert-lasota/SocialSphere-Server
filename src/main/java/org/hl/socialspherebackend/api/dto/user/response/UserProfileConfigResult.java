@@ -10,29 +10,23 @@ public class UserProfileConfigResult {
     private final UserProfileConfigResponse userProfileConfig;
 
     @JsonProperty
-    private final Code code;
+    private final UserErrorCode code;
 
     @JsonProperty
     private final String message;
 
-    public enum Code {
-        CREATED, CANNOT_CREATE,
-        USER_NOT_FOUND, USER_PROFILE_CONFIG_NOT_FOUND, FOUND,
-        UPDATED
-    }
-
-    private UserProfileConfigResult(UserProfileConfigResponse response, Code code, String message) {
+    private UserProfileConfigResult(UserProfileConfigResponse response, UserErrorCode code, String message) {
         this.userProfileConfig = response;
         this.code = code;
         this.message = message;
     }
 
 
-    public static UserProfileConfigResult success(UserProfileConfigResponse response, Code code) {
-        return new UserProfileConfigResult(response, code, null);
+    public static UserProfileConfigResult success(UserProfileConfigResponse response) {
+        return new UserProfileConfigResult(response, null, null);
     }
 
-    public static UserProfileConfigResult failure(Code code, String message) {
+    public static UserProfileConfigResult failure(UserErrorCode code, String message) {
         return new UserProfileConfigResult(null, code, message);
     }
 

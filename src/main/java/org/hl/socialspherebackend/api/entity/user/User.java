@@ -1,6 +1,7 @@
 package org.hl.socialspherebackend.api.entity.user;
 
 import jakarta.persistence.*;
+import org.hl.socialspherebackend.api.entity.notification.UserFriendRequest;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -38,13 +39,16 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "receiver", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> receivedFriendRequests = new HashSet<>();
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_friend_list",
             joinColumns = @JoinColumn(name = "friend_id"),
             inverseJoinColumns = @JoinColumn(name = "inverse_friend_id")
     )
-    private Set<User> userFriendList = new HashSet<>();
+    private Set<User> friends = new HashSet<>();
+
+    @ManyToMany(mappedBy = "friends", fetch = FetchType.EAGER)
+    private Set<User> inverseFriends = new HashSet<>();
 
 
     protected User() {
@@ -84,13 +88,13 @@ public class User implements UserDetails {
     }
 
     public void appendFriend(User friend) {
-        this.userFriendList.add(friend);
-        friend.userFriendList.add(friend);
+        this.friends.add(friend);
+        friend.getInverseFriends().add(this);
     }
 
     public void removeFriend(User friend) {
-        this.userFriendList.remove(friend);
-        friend.userFriendList.remove(friend);
+        this.friends.remove(friend);
+        friend.getInverseFriends().remove(this);
     }
 
     @Override
@@ -136,11 +140,6 @@ public class User implements UserDetails {
         this.password = password;
     }
 
-
-    public void setUserFriendList(Set<User> userFriendList) {
-        this.userFriendList = userFriendList;
-    }
-
     public Set<UserFriendRequest> getSentFriendRequests() {
         return sentFriendRequests;
     }
@@ -165,8 +164,12 @@ public class User implements UserDetails {
         this.userProfileConfig = userProfileConfig;
     }
 
-    public Set<User> getUserFriendList() {
-        return userFriendList;
+    public Set<User> getFriends() {
+        return friends;
+    }
+
+    public Set<User> getInverseFriends() {
+        return inverseFriends;
     }
 
     @Override

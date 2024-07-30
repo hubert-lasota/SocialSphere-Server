@@ -9,25 +9,24 @@ public class PostResult {
     private final PostResponse post;
 
     @JsonProperty
-    private final Code code;
+    private final PostErrorCode code;
 
     @JsonProperty
     private final String message;
 
-    public enum Code { NOT_FOUND, FOUND, CREATED, CANNOT_CREATE }
-
-    private PostResult(PostResponse post, Code code, String message) {
+    private PostResult(PostResponse post, PostErrorCode code, String message) {
         this.post = post;
         this.code = code;
         this.message = message;
     }
 
-    public static PostResult success(PostResponse post, Code code) {
-        return new PostResult(post,code, null);
+
+    public static PostResult success(PostResponse post) {
+        return new PostResult(post, null, null);
     }
 
-    public static PostResult failure(Code code, String message) {
-        return new PostResult(null, code, null);
+    public static PostResult failure(PostErrorCode code, String message) {
+        return new PostResult(null, code, message);
     }
 
     public boolean isSuccess() {

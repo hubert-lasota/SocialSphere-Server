@@ -16,7 +16,8 @@ public class UserConfig {
 
     @Profile("dev")
     @Bean
-    public UserInitData userInitData(UserFacade userFacade, PasswordEncoder passwordEncoder) {
-        return new UserInitData(userFacade, passwordEncoder);
+    public UserInitData userInitData(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        return new UserInitData(userRepository, passwordEncoder);
     }
+
 }

@@ -1,10 +1,11 @@
 package org.hl.socialspherebackend.application.user;
 
+import org.hl.socialspherebackend.api.dto.notification.response.UserFriendRequestResponse;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.*;
+import org.hl.socialspherebackend.api.entity.notification.UserFriendRequest;
 import org.hl.socialspherebackend.api.entity.user.User;
-import org.hl.socialspherebackend.api.entity.user.UserFriendRequest;
 import org.hl.socialspherebackend.api.entity.user.UserProfile;
 import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
 import org.hl.socialspherebackend.application.util.FileUtils;
@@ -14,15 +15,39 @@ public class UserMapper {
     private UserMapper() { }
 
 
-    public static UserResponse fromUserEntityToResponse(User entity, RelationshipStatus status) {
+    public static UserResponse fromEntityToResponse(User user, RelationshipStatus status) {
         return new UserResponse(
-                entity.getId(),
-                entity.getUsername(),
+                user.getId(),
+                user.getUsername(),
                 status
         );
     }
 
-    public static SearchUsersResponse fromUserEntityToSearchUsersResponse(User entity, RelationshipStatus status) {
+    public static UserProfileResponse fromEntityToResponse(UserProfile userProfile) {
+        byte[] decompressedProfilePicture = decompressProfilePicture(userProfile);
+
+        return new UserProfileResponse(
+                userProfile.getFirstName(),
+                userProfile.getLastName(),
+                userProfile.getCity(),
+                userProfile.getCountry(),
+                decompressedProfilePicture
+        );
+    }
+
+    public static UserProfileConfigResponse fromEntityToResponse(UserProfileConfig userProfileConfig) {
+        return new UserProfileConfigResponse(userProfileConfig.getUserPrivacyLevel());
+    }
+
+    public static UserFriendRequestResponse fromEntityToResponse(UserFriendRequest userFriendRequest) {
+        return new UserFriendRequestResponse(
+                userFriendRequest.getSender().getId(),
+                userFriendRequest.getSender().getId(),
+                userFriendRequest.getStatus()
+        );
+    }
+
+    public static SearchUsersResponse fromEntityToSearchUsersResponse(User entity, RelationshipStatus status) {
         UserProfile profileResponse = entity.getUserProfile();
         String firstName = profileResponse.getFirstName();
         String lastName = profileResponse.getLastName();
@@ -34,51 +59,35 @@ public class UserMapper {
         return new SearchUsersResponse(entity.getId(), firstName, lastName, profilePicture, status);
     }
 
-    public static UserFriendResponse fromUserEntityToUserFriendResponse(User entity, RelationshipStatus status) {
-        UserResponse userResponse = UserMapper.fromUserEntityToResponse(entity, status);
-        byte[] profilePicture = FileUtils.decompressFile(entity.getUserProfile().getProfilePicture().getImage());
-        UserProfileResponse userProfile = UserMapper.fromUserProfileEntityToResponse(entity.getUserProfile(), profilePicture);
-        UserProfileConfigResponse userProfileConfig = UserMapper.fromUserProfileConfigEntityToResponse(entity.getUserProfileConfig());
+    public static UserFriendResponse fromEntityToUserFriendResponse(User entity, RelationshipStatus status) {
+        UserResponse userResponse = UserMapper.fromEntityToResponse(entity, status);
+        UserProfileResponse userProfile = UserMapper.fromEntityToResponse(entity.getUserProfile());
+        UserProfileConfigResponse userProfileConfig = UserMapper.fromEntityToResponse(entity.getUserProfileConfig());
         return new UserFriendResponse(userResponse, userProfile, userProfileConfig);
     }
 
-    public static UserProfileResponse fromUserProfileEntityToResponse(UserProfile userProfile, byte[] image) {
-        return new UserProfileResponse(
-                userProfile.getFirstName(),
-                userProfile.getLastName(),
-                userProfile.getCity(),
-                userProfile.getCountry(),
-                image
-        );
-    }
 
-    public static UserProfile fromRequestToUserProfileEntity(UserProfileRequest request, User user) {
+    public static UserProfile fromRequestToEntity(UserProfileRequest userProfileRequest, User user) {
         return new UserProfile(
-                request.firstName(),
-                request.lastName(),
-                request.city(),
-                request.country(),
+                userProfileRequest.firstName(),
+                userProfileRequest.lastName(),
+                userProfileRequest.city(),
+                userProfileRequest.country(),
                 user
         );
     }
 
-    public static UserProfileConfigResponse fromUserProfileConfigEntityToResponse(UserProfileConfig userProfileConfig) {
-        return new UserProfileConfigResponse(userProfileConfig.getUserPrivacyLevel());
-    }
-
-    public static UserProfileConfig fromRequestToUserProfileConfigEntity(UserProfileConfigRequest request, User user) {
+    public static UserProfileConfig fromRequestToEntity(UserProfileConfigRequest userProfileConfigRequest, User user) {
       return new UserProfileConfig(
-              request.profilePrivacyLevel(),
+              userProfileConfigRequest.profilePrivacyLevel(),
               user
       );
     }
 
-    public static UserFriendRequestResponse fromUserFriendRequestEntityToResponse(UserFriendRequest entity) {
-        return new UserFriendRequestResponse(
-                entity.getSender().getId(),
-                entity.getSender().getId(),
-                entity.getStatus()
-        );
+
+    private static byte[] decompressProfilePicture(UserProfile userProfile) {
+        byte[] profilePicture = userProfile.getProfilePicture().getImage();
+        return FileUtils.decompressFile(profilePicture);
     }
 
 }

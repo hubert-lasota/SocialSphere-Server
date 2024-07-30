@@ -11,14 +11,12 @@ public class PostCommentsResult {
     private final Set<PostCommentResponse> comments;
 
     @JsonProperty
-    private final Code code;
+    private final PostErrorCode code;
 
     @JsonProperty
     private final String message;
 
-    public enum Code { NOT_FOUND, FOUND }
-
-    private PostCommentsResult(Set<PostCommentResponse> comments, Code code, String message) {
+    private PostCommentsResult(Set<PostCommentResponse> comments, PostErrorCode code, String message) {
         this.comments = comments;
         this.code = code;
         this.message = message;
@@ -26,10 +24,10 @@ public class PostCommentsResult {
 
 
     public static PostCommentsResult success(Set<PostCommentResponse> comments) {
-        return new PostCommentsResult(comments, Code.FOUND, null);
+        return new PostCommentsResult(comments, null, null);
     }
 
-    public static PostCommentsResult failure(Code code, String message) {
+    public static PostCommentsResult failure(PostErrorCode code, String message) {
         return new PostCommentsResult(null, code, message);
     }
 

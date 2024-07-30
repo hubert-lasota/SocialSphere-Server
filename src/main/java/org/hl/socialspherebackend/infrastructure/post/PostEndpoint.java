@@ -4,6 +4,7 @@ import org.hl.socialspherebackend.api.dto.post.request.PostCommentRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostLikeRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostRequest;
 import org.hl.socialspherebackend.api.dto.post.response.*;
+import org.hl.socialspherebackend.application.notification.PostNotificationSubscriber;
 import org.hl.socialspherebackend.application.post.PostFacade;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -16,7 +17,7 @@ public class PostEndpoint {
 
     private final PostFacade postFacade;
 
-    public PostEndpoint(PostFacade postFacade) {
+    public PostEndpoint(PostFacade postFacade, PostNotificationSubscriber notificationSubscriber) {
         this.postFacade = postFacade;
     }
 

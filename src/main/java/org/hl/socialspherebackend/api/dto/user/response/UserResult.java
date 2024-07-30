@@ -15,18 +15,16 @@ public class UserResult {
     private final UserProfileConfigResponse userProfileConfig;
 
     @JsonProperty
-    private final Code code;
+    private final UserErrorCode code;
 
     @JsonProperty
     private final String message;
-
-    public enum Code { NOT_FOUND, FOUND }
 
 
     private UserResult(UserResponse user,
                        UserProfileResponse userProfile,
                        UserProfileConfigResponse userProfileConfig,
-                       Code code,
+                       UserErrorCode code,
                        String message) {
         this.user = user;
         this.userProfile = userProfile;
@@ -37,12 +35,11 @@ public class UserResult {
 
     public static UserResult success(UserResponse userResponse,
                                      UserProfileResponse userProfileResponse,
-                                     UserProfileConfigResponse userProfileConfigResponse,
-                                     Code code) {
-        return new UserResult(userResponse, userProfileResponse, userProfileConfigResponse, code, null);
+                                     UserProfileConfigResponse userProfileConfigResponse) {
+        return new UserResult(userResponse, userProfileResponse, userProfileConfigResponse, null, null);
     }
 
-    public static UserResult failure(Code code, String message) {
+    public static UserResult failure(UserErrorCode code, String message) {
         return new UserResult(null, null, null, code, message);
     }
 
@@ -54,6 +51,11 @@ public class UserResult {
     @JsonIgnore
     public boolean isFailure() {
         return !isSuccess();
+    }
+
+    @JsonIgnore
+    public UserResponse getUser() {
+        return user;
     }
 
     @Override

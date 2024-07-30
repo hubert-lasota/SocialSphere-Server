@@ -12,14 +12,12 @@ public class PostLikeResult {
     private final Long userId;
 
     @JsonProperty
-    private final Code code;
+    private final PostErrorCode code;
 
     @JsonProperty
     private final String message;
 
-    public enum Code { USER_NOT_FOUND, POST_NOT_FOUND, USER_ALREADY_LIKES_POST, USER_DOES_NOT_LIKES_POST, LIKE_ADDED}
-
-    public PostLikeResult(Long postId, Long userId, Code code, String message) {
+    public PostLikeResult(Long postId, Long userId, PostErrorCode code, String message) {
         this.postId = postId;
         this.userId = userId;
         this.code = code;
@@ -27,10 +25,10 @@ public class PostLikeResult {
     }
 
     public static PostLikeResult success(Long postId, Long userId) {
-        return new PostLikeResult(postId, userId, Code.LIKE_ADDED, null);
+        return new PostLikeResult(postId, userId, null, null);
     }
 
-    public static PostLikeResult failure(Code code, String message) {
+    public static PostLikeResult failure(PostErrorCode code, String message) {
         return new PostLikeResult(null, null, code, message);
     }
 

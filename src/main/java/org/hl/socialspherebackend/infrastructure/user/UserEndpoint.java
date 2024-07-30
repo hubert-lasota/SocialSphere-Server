@@ -1,6 +1,7 @@
 package org.hl.socialspherebackend.infrastructure.user;
 
-import org.hl.socialspherebackend.api.dto.user.request.UserFriendRequestDto;
+import org.hl.socialspherebackend.api.dto.notification.request.UserFriendRequestDto;
+import org.hl.socialspherebackend.api.dto.notification.response.UserFriendRequestResult;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.*;

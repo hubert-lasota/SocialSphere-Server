@@ -4,9 +4,8 @@ import com.github.javafaker.Faker;
 import org.hl.socialspherebackend.api.entity.post.Post;
 import org.hl.socialspherebackend.api.entity.post.PostImage;
 import org.hl.socialspherebackend.api.entity.user.User;
-import org.hl.socialspherebackend.application.post.PostFacade;
-import org.hl.socialspherebackend.application.user.UserFacade;
 import org.hl.socialspherebackend.application.util.FileUtils;
+import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.springframework.beans.factory.InitializingBean;
 
 import javax.imageio.ImageIO;
@@ -23,17 +22,17 @@ import java.util.concurrent.TimeUnit;
 
 public class PostInitData implements InitializingBean {
 
-    private final PostFacade postFacade;
-    private final UserFacade userFacade;
+    private final PostRepository postRepository;
+    private final UserRepository userRepository;
 
-    public PostInitData(PostFacade postFacade, UserFacade userFacade) {
-        this.postFacade = postFacade;
-        this.userFacade = userFacade;
+    public PostInitData(PostRepository postRepository, UserRepository userRepository) {
+        this.postRepository = postRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        if(postFacade.countPostEntities() > 1) {
+        if(postRepository.count() > 0) {
             return;
         }
         createPosts();
@@ -41,7 +40,7 @@ public class PostInitData implements InitializingBean {
 
     public void createPosts() {
         Faker faker = new Faker();
-        List<User> users = userFacade.findAllUserEntities();
+        List<User> users = userRepository.findAll();
         users.forEach(u -> {
             for(int i = 0; i < 4; i++) {
                 String content = faker.lorem().paragraph(7);
@@ -65,7 +64,7 @@ public class PostInitData implements InitializingBean {
                 }
 
 
-                postFacade.savePostEntity(post);
+                postRepository.save(post);
             }
         });
     }
