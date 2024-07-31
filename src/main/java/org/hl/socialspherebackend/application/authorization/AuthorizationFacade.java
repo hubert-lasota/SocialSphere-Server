@@ -19,16 +19,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class AuthorizationFacade {
 
     private final UserRepository userRepository;
+    private final AuthorizationValidator authorizationValidator;
     private final JwtFacade jwtFacade;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
 
 
     public AuthorizationFacade(UserRepository userRepository,
+                               AuthorizationValidator authorizationValidator,
                                JwtFacade jwtFacade,
                                AuthenticationManager authenticationManager,
                                PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.authorizationValidator = authorizationValidator;
         this.jwtFacade = jwtFacade;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
@@ -41,6 +44,12 @@ public class AuthorizationFacade {
                     "Username: %s exists in database!".formatted(request.username()));
         }
         LoginRequest encodedRequest = new LoginRequest(request.username(), passwordEncoder.encode(request.password()));
+
+        AuthorizationValidateResult validateResult = authorizationValidator.validate(encodedRequest);
+        if(!validateResult.isValid()) {
+            return LoginResult.failure(validateResult.code(), validateResult.message());
+        }
+
         User user = AuthorizationMapper.fromRequestToEntity(encodedRequest);
         Authority authority = new Authority(user, "USER");
         user.appendAuthority(authority);

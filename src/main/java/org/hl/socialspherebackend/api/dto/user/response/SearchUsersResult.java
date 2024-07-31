@@ -16,8 +16,6 @@ public class SearchUsersResult {
     @JsonProperty
     private final String message;
 
-
-
     private SearchUsersResult(List<SearchUsersResponse> searchUsersResponse, UserErrorCode code, String message) {
         this.searchUsersListResponse = searchUsersResponse;
         this.code = code;

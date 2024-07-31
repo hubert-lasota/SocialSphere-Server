@@ -38,10 +38,11 @@ public class UserFacade {
     private static final Logger log = LoggerFactory.getLogger(UserFacade.class);
 
     private final UserRepository userRepository;
+    private final UserValidator userValidator;
 
-    public UserFacade(UserRepository userRepository) {
+    public UserFacade(UserRepository userRepository, UserValidator userValidator) {
         this.userRepository = userRepository;
-
+        this.userValidator = userValidator;
     }
 
 
@@ -62,6 +63,17 @@ public class UserFacade {
         }
         User sender = senderOpt.get();
         User receiver = receiverOpt.get();
+
+        boolean didSenderSentFriendRequest = sender.getSentFriendRequests()
+                .stream()
+                .findAny()
+                .isPresent();
+
+        if(didSenderSentFriendRequest) {
+            return UserFriendRequestResult.failure(NotificationErrorCode.SENDER_ALREADY_SENT_FRIEND_REQUEST,
+                    "Sender with id = %s already sent friend request!".formatted(request.senderId()));
+        }
+
         UserFriendRequest userFriendRequest = new UserFriendRequest(sender, receiver, UserFriendRequestStatus.WAITING_FOR_RESPONSE);
 
         sender.appendSentFriendRequest(userFriendRequest);
@@ -160,6 +172,11 @@ public class UserFacade {
         if(user.getUserProfile() != null) {
             return UserProfileResult.failure(UserErrorCode.USER_PROFILE_ALREADY_EXISTS,
                     "User with id = %d already have profile.");
+        }
+
+        UserValidateResult validateResult = userValidator.validate(request);
+        if(!validateResult.isValid()) {
+            return UserProfileResult.failure(validateResult.code(), validateResult.message());
         }
 
         UserProfile userProfile = UserMapper.fromRequestToEntity(request, user);
@@ -476,6 +493,11 @@ public class UserFacade {
                     UserErrorCode.USER_PROFILE_NOT_FOUND,
                     "User Profile with user id = %d doesn't exits in database".formatted(userId)
             );
+        }
+
+        UserValidateResult validateResult = userValidator.validate(request);
+        if(!validateResult.isValid()) {
+            return UserProfileResult.failure(validateResult.code(), validateResult.message());
         }
 
         updateUserProfileEntity(userProfile, request, profilePicture);

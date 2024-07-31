@@ -2,6 +2,7 @@ package org.hl.socialspherebackend.infrastructure.security.authorization;
 
 import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.application.authorization.AuthorizationFacade;
+import org.hl.socialspherebackend.application.authorization.AuthorizationValidator;
 import org.hl.socialspherebackend.infrastructure.security.jwt.JwtFacade;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.springframework.context.annotation.Bean;
@@ -18,10 +19,16 @@ public class AuthorizationConfig {
 
     @Bean
     public AuthorizationFacade authorizationFacade(UserRepository userRepository,
+                                                   AuthorizationValidator authorizationValidator,
                                                    JwtFacade jwtFacade,
                                                    AuthenticationManager authenticationManager,
                                                    PasswordEncoder passwordEncoder) {
-        return new AuthorizationFacade(userRepository, jwtFacade, authenticationManager, passwordEncoder);
+        return new AuthorizationFacade(userRepository, authorizationValidator, jwtFacade, authenticationManager, passwordEncoder);
+    }
+
+    @Bean
+    public AuthorizationValidator authorizationValidator() {
+        return new AuthorizationValidator();
     }
 
     @Bean

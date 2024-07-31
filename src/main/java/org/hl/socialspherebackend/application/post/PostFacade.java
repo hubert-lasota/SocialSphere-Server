@@ -34,15 +34,21 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
     private final PostRepository postRepository;
     private final PostCommentRepository postCommentRepository;
+    private final PostValidator postValidator;
+    private final PostCommentValidator postCommentValidator;
     private final UserRepository userRepository;
     private final Set<Observer<PostUpdateDetails>> observers;
 
     public PostFacade(PostRepository postRepository,
                       PostCommentRepository postCommentRepository,
+                      PostValidator postValidator,
+                      PostCommentValidator postCommentValidator,
                       UserRepository userRepository,
                       Set<Observer<PostUpdateDetails>> observers) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.postValidator = postValidator;
+        this.postCommentValidator = postCommentValidator;
         this.postCommentRepository = postCommentRepository;
         this.observers = observers;
     }
@@ -71,6 +77,11 @@ public class PostFacade implements Observable<PostUpdateDetails> {
                     "Could not find user with id = %d in database!".formatted(request.userId()));
         }
         User user = userOpt.get();
+
+        PostValidateResult validateResult = postValidator.validate(request);
+        if(!validateResult.isValid()) {
+            return PostResult.failure(validateResult.code(), validateResult.message());
+        }
 
         Instant now = Instant.now();
         Post post = new Post(request.content(), 0L, 0L, now, now, user);
@@ -101,6 +112,11 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         if(postOpt.isEmpty()) {
             return PostCommentResult.failure(PostErrorCode.USER_NOT_FOUND,
                     "Could not find post with id = %d in database!".formatted(request.postId()));
+        }
+
+        PostValidateResult validateResult = postCommentValidator.validate(request);
+        if(!validateResult.isValid()) {
+            return PostCommentResult.failure(validateResult.code(), validateResult.message());
         }
 
         Post post = postOpt.get();
