@@ -43,7 +43,8 @@ public class PostNotificationManager implements Observer<PostUpdateDetails>, Pos
         if(sendNotification(subject)) {
            log.trace("Successfully sent notification: {}", subject);
        } else {
-           // TODO CREATE postnotificationservice and add notification to database
+           log.trace("Notification {} will be stored in database", subject);
+           postNotificationFacade.savePostUpdateNotification(subject);
        }
     }
 

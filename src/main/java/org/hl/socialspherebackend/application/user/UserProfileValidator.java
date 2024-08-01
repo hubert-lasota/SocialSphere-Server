@@ -4,13 +4,14 @@ import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.UserErrorCode;
 import org.hl.socialspherebackend.application.validator.Validator;
 
-public class UserValidator extends Validator<UserProfileRequest, UserValidateResult> {
+public class UserProfileValidator extends Validator<UserProfileRequest, UserValidateResult> {
 
-    public UserValidator() {
+    public UserProfileValidator() {
         super();
     }
 
 
+    @Override
     public UserValidateResult validate(UserProfileRequest userProfile) {
         if(userProfile == null) {
             return new UserValidateResult(false, UserErrorCode.USER_PROFILE_REQUEST_IS_NULL,
@@ -21,6 +22,7 @@ public class UserValidator extends Validator<UserProfileRequest, UserValidateRes
         String lastName = userProfile.lastName();
         String city = userProfile.city();
         String country = userProfile.country();
+        setAcceptFirstCharUppercase(false);
 
         if(firstName == null) {
             return new UserValidateResult(false, UserErrorCode.FIRST_NAME_IS_NULL,
@@ -47,6 +49,10 @@ public class UserValidator extends Validator<UserProfileRequest, UserValidateRes
                     "First name contains less than %d characters".formatted(textMinSize));
         }
 
+        if(Character.isUpperCase(firstName.charAt(0)) && !acceptFirstCharUppercase) {
+            return new UserValidateResult(false, UserErrorCode.FIRST_NAME_DOES_NOT_STARTS_UPPERCASE,
+                    "First name \"%s\" first character is not uppercase".formatted(firstName));
+        }
 
         if(lastName == null) {
             return new UserValidateResult(false, UserErrorCode.LAST_NAME_IS_NULL,
@@ -71,6 +77,11 @@ public class UserValidator extends Validator<UserProfileRequest, UserValidateRes
         if(lastName.length() < textMinSize) {
             return new UserValidateResult(false, UserErrorCode.LAST_NAME_LENGTH_IS_TOO_SHORT,
                     "Last name contains less than %d characters".formatted(textMinSize));
+        }
+
+        if(Character.isUpperCase(lastName.charAt(0)) && !acceptFirstCharUppercase) {
+            return new UserValidateResult(false, UserErrorCode.LAST_NAME_DOES_NOT_STARTS_UPPERCASE,
+                    "Last name \"%s\" first character is not uppercase".formatted(lastName));
         }
 
 
@@ -99,6 +110,12 @@ public class UserValidator extends Validator<UserProfileRequest, UserValidateRes
                     "City contains less than %d characters".formatted(textMinSize));
         }
 
+        if(Character.isUpperCase(city.charAt(0)) && !acceptFirstCharUppercase) {
+            return new UserValidateResult(false, UserErrorCode.CITY_DOES_NOT_STARTS_UPPERCASE,
+                    "First name \"%s\" first character is not uppercase".formatted(city));
+        }
+
+
         if(country == null) {
             return new UserValidateResult(false, UserErrorCode.COUNTRY_IS_NULL,
                     "Country is null");
@@ -123,6 +140,12 @@ public class UserValidator extends Validator<UserProfileRequest, UserValidateRes
             return new UserValidateResult(false, UserErrorCode.COUNTRY_LENGTH_IS_TOO_SHORT,
                     "Country contains less than %d characters".formatted(textMinSize));
         }
+
+        if(Character.isUpperCase(country.charAt(0)) && !acceptFirstCharUppercase) {
+            return new UserValidateResult(false, UserErrorCode.COUNTRY_DOES_NOT_STARTS_UPPERCASE,
+                    "Country \"%s\" first character is not uppercase".formatted(country));
+        }
+
 
         return new UserValidateResult(true, null, null);
     }

@@ -1,7 +1,7 @@
 package org.hl.socialspherebackend.infrastructure.user;
 
 import org.hl.socialspherebackend.application.user.UserFacade;
-import org.hl.socialspherebackend.application.user.UserValidator;
+import org.hl.socialspherebackend.application.user.UserProfileValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -11,13 +11,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class UserConfig {
 
     @Bean
-    public UserFacade userFacade(UserRepository userRepository, UserValidator userValidator) {
-        return new UserFacade(userRepository, userValidator);
+    public UserFacade userFacade(UserRepository userRepository, UserProfileValidator userProfileValidator) {
+        return new UserFacade(userRepository, userProfileValidator);
     }
 
     @Bean
-    public UserValidator userValidator() {
-        return new UserValidator();
+    public UserProfileValidator userValidator() {
+        return new UserProfileValidator();
     }
 
     @Profile("dev")

@@ -1,7 +1,5 @@
 package org.hl.socialspherebackend.infrastructure.user;
 
-import org.hl.socialspherebackend.api.dto.notification.request.UserFriendRequestDto;
-import org.hl.socialspherebackend.api.dto.notification.response.UserFriendRequestResult;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.*;
@@ -46,35 +44,6 @@ public class UserEndpoint {
         return userProfileConfigResult.isSuccess() ?
                 ResponseEntity.ok(userProfileConfigResult) :
                 ResponseEntity.badRequest().body(userProfileConfigResult);
-    }
-
-    @PostMapping("/friend/send")
-    public ResponseEntity<UserFriendRequestResult> sendFriendRequest(UserFriendRequestDto request) {
-        UserFriendRequestResult userFriendRequestResult = userFacade.sendFriendRequest(request);
-
-        return userFriendRequestResult.isSuccess() ?
-                ResponseEntity.ok(userFriendRequestResult) :
-                ResponseEntity.badRequest().body(userFriendRequestResult);
-    }
-
-
-    @PostMapping("/friend/accept")
-    public ResponseEntity<UserFriendRequestResult> acceptFriendRequest(UserFriendRequestDto request) {
-        UserFriendRequestResult userFriendRequestResult = userFacade.acceptFriendRequest(request);
-
-        return userFriendRequestResult.isSuccess() ?
-                ResponseEntity.ok(userFriendRequestResult) :
-                ResponseEntity.badRequest().body(userFriendRequestResult);
-    }
-
-    @PostMapping("/friend/reject")
-    public ResponseEntity<UserFriendRequestResult> rejectFriendRequest(UserFriendRequestDto request) {
-
-        UserFriendRequestResult userFriendRequestResult = userFacade.rejectFriendRequest(request);
-
-        return userFriendRequestResult.isSuccess() ?
-                ResponseEntity.ok(userFriendRequestResult) :
-                ResponseEntity.badRequest().body(userFriendRequestResult);
     }
 
     @GetMapping("/{id}")

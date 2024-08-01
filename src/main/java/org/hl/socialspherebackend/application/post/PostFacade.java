@@ -166,7 +166,8 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         post.appendLikedBy(likedBy);
         postRepository.save(post);
 
-        notifyObservers(NotificationMapper.fromEntitiesToResponse(post, PostUpdateType.LIKE, likedBy));
+        Instant now = Instant.now();
+        notifyObservers(NotificationMapper.fromEntitiesToResponse(post, PostUpdateType.LIKE, likedBy, now));
 
         return PostLikeResult.success(post.getId(), likedBy.getId());
     }
