@@ -1,16 +1,20 @@
 package org.hl.socialspherebackend.application.user;
 
-import org.hl.socialspherebackend.api.dto.notification.response.UserFriendRequestResponse;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.*;
-import org.hl.socialspherebackend.api.entity.notification.UserFriendRequest;
+import org.hl.socialspherebackend.api.entity.chat.UserFriendRequest;
 import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.api.entity.user.UserProfile;
 import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
+import org.hl.socialspherebackend.api.entity.user.UserProfilePicture;
 import org.hl.socialspherebackend.application.util.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class UserMapper {
+
+    private static final Logger log = LoggerFactory.getLogger(UserMapper.class);
 
     private UserMapper() { }
 
@@ -47,7 +51,23 @@ public class UserMapper {
         );
     }
 
-    public static SearchUsersResponse fromEntityToSearchUsersResponse(User entity, RelationshipStatus status) {
+    public static UserWrapperResponse fromEntityToUserWrapperResponse(User user) {
+        UserResponse userResponse = UserMapper.fromEntityToResponse(user, null);
+        UserProfileResponse userProfileResponse = UserMapper.fromEntityToResponse(user.getUserProfile());
+        UserProfileConfigResponse userProfileConfigResponse = UserMapper.fromEntityToResponse(user.getUserProfileConfig());
+
+        return new UserWrapperResponse(userResponse, userProfileResponse, userProfileConfigResponse);
+    }
+
+    public static UserWrapperResponse fromEntityToUserWrapperResponse(User user, RelationshipStatus status) {
+        UserResponse userResponse = UserMapper.fromEntityToResponse(user, status);
+        UserProfileResponse userProfileResponse = UserMapper.fromEntityToResponse(user.getUserProfile());
+        UserProfileConfigResponse userProfileConfigResponse = UserMapper.fromEntityToResponse(user.getUserProfileConfig());
+
+        return new UserWrapperResponse(userResponse, userProfileResponse, userProfileConfigResponse);
+    }
+
+    public static UserHeaderResponse fromEntityToUserHeaderResponse(User entity, RelationshipStatus status) {
         UserProfile profileResponse = entity.getUserProfile();
         String firstName = profileResponse.getFirstName();
         String lastName = profileResponse.getLastName();
@@ -56,7 +76,7 @@ public class UserMapper {
             profilePicture = FileUtils.decompressFile(profileResponse.getProfilePicture().getImage());
         }
 
-        return new SearchUsersResponse(entity.getId(), firstName, lastName, profilePicture, status);
+        return new UserHeaderResponse(entity.getId(), firstName, lastName, profilePicture, status);
     }
 
     public static UserFriendResponse fromEntityToUserFriendResponse(User entity, RelationshipStatus status) {
@@ -86,6 +106,12 @@ public class UserMapper {
 
 
     private static byte[] decompressProfilePicture(UserProfile userProfile) {
+        UserProfilePicture userProfilePicture = userProfile.getProfilePicture();
+        if(userProfilePicture == null) {
+            log.debug("UserProfile {} has no picture", userProfile);
+            return null;
+        }
+
         byte[] profilePicture = userProfile.getProfilePicture().getImage();
         return FileUtils.decompressFile(profilePicture);
     }

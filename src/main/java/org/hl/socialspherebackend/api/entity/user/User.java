@@ -1,7 +1,7 @@
 package org.hl.socialspherebackend.api.entity.user;
 
 import jakarta.persistence.*;
-import org.hl.socialspherebackend.api.entity.notification.UserFriendRequest;
+import org.hl.socialspherebackend.api.entity.chat.UserFriendRequest;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -83,8 +83,16 @@ public class User implements UserDetails {
         this.sentFriendRequests.add(friendRequest);
     }
 
+    public void removeSentFriendRequest(UserFriendRequest friendRequest) {
+        this.sentFriendRequests.remove(friendRequest);
+    }
+
     public void appendReceivedFriendRequest(UserFriendRequest friendRequest) {
         this.receivedFriendRequests.add(friendRequest);
+    }
+
+    public void removeReceivedFriendRequest(UserFriendRequest friendRequest) {
+        this.receivedFriendRequests.remove(friendRequest);
     }
 
     public void appendFriend(User friend) {

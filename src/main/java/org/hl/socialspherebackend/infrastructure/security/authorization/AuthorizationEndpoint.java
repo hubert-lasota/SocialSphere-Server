@@ -2,7 +2,7 @@ package org.hl.socialspherebackend.infrastructure.security.authorization;
 
 import org.hl.socialspherebackend.api.dto.authorization.request.LoginRequest;
 import org.hl.socialspherebackend.api.dto.authorization.request.UserTokenRequest;
-import org.hl.socialspherebackend.api.dto.authorization.response.LoginResult;
+import org.hl.socialspherebackend.api.dto.common.DataResult;
 import org.hl.socialspherebackend.application.authorization.AuthorizationFacade;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,39 +22,39 @@ public class AuthorizationEndpoint {
 
 
     @PostMapping("/create")
-    public ResponseEntity<LoginResult> createLogin(@RequestBody LoginRequest request) {
-        LoginResult response = authorizationFacade.createLogin(request);
+    public ResponseEntity<DataResult<?, ?>> createLogin(@RequestBody LoginRequest request) {
+        DataResult<?, ?> result = authorizationFacade.createLogin(request);
 
-        return response.isSuccess() ?
-                ResponseEntity.ok(response) :
-                ResponseEntity.badRequest().body(response);
+        return result.isSuccess() ?
+                ResponseEntity.ok(result) :
+                ResponseEntity.badRequest().body(result);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResult> login(@RequestBody LoginRequest request) {
-        LoginResult response = authorizationFacade.login(request);
+    public ResponseEntity<DataResult<?, ?>> login(@RequestBody LoginRequest request) {
+        DataResult<?, ?> result = authorizationFacade.login(request);
 
-        return response.isSuccess() ?
-                ResponseEntity.ok(response) :
-                ResponseEntity.badRequest().body(response);
+        return result.isSuccess() ?
+                ResponseEntity.ok(result) :
+                ResponseEntity.badRequest().body(result);
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<LoginResult> validateUserToken(@RequestBody UserTokenRequest request) {
-        LoginResult response = authorizationFacade.validateUserToken(request);
+    public ResponseEntity<DataResult<?, ?>> validateUserToken(@RequestBody UserTokenRequest request) {
+        DataResult<?, ?> result = authorizationFacade.validateUserToken(request);
 
-        return response.isSuccess() ?
-                ResponseEntity.ok(response) :
-                ResponseEntity.badRequest().body(response);
+        return result.isSuccess() ?
+                ResponseEntity.ok(result) :
+                ResponseEntity.badRequest().body(result);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResult> refreshUserToken(@RequestBody UserTokenRequest request) {
-        LoginResult response = authorizationFacade.refreshUserToken(request);
+    public ResponseEntity<DataResult<?, ?>> refreshUserToken(@RequestBody UserTokenRequest request) {
+        DataResult<?, ?> result = authorizationFacade.refreshUserToken(request);
 
-        return response.isSuccess() ?
-                ResponseEntity.ok(response) :
-                ResponseEntity.badRequest().body(response);
+        return result.isSuccess() ?
+                ResponseEntity.ok(result) :
+                ResponseEntity.badRequest().body(result);
     }
 
 }

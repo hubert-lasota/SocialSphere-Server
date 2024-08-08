@@ -26,20 +26,27 @@ logging:
   level:
     org:
       hibernate:
-        SQL: TRACE
+        SQL: INFO
         type:
           descriptor:
             sql:
-              BasicBinder: TRACE
+              BasicBinder: INFO
     org.hl.socialspherebackend:
         application:
           user: DEBUG
+          post: DEBUG
+          notification: DEBUG
+          authorization: DEBUG
     org.springframework:
       jdbc:
-        core: TRACE
-        datasource: TRACE
-      transaction: TRACE
-      hibernate: TRACE
+        core: INFO
+        datasource: INFO
+      transaction: INFO
+      hibernate: INFO
+      web:
+        socket: INFO
+        socket.server: INFO
+      messaging: INFO
 
 
 

@@ -31,6 +31,10 @@
         <sqlFile path="schemas/user/create-user_friend_list.sql" relativeToChangelogFile="true" />
     </changeSet>
 
+    <changeSet id="11" author="hlasota">
+        <sqlFile path="schemas/user/create-user_friend_request.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
     <!-- CREATE POST AND RELATIONS TABLES-->
     <changeSet id="7" author="hlasota">
         <sqlFile path="schemas/post/create-post.sql" relativeToChangelogFile="true" />
@@ -48,14 +52,22 @@
         <sqlFile path="schemas/post/create-post_image.sql" relativeToChangelogFile="true" />
     </changeSet>
 
-    <!--  CREATE NOTIFICATION AND RELATIONS TABLES  -->
-
-    <changeSet id="11" author="hlasota">
-        <sqlFile path="schemas/notification/create-user_friend_request.sql" relativeToChangelogFile="true" />
+    <changeSet id="12" author="hlasota">
+        <sqlFile path="schemas/post/create-post_notification.sql" relativeToChangelogFile="true" />
     </changeSet>
 
-    <changeSet id="12" author="hlasota">
-        <sqlFile path="schemas/notification/create-post_notification.sql" relativeToChangelogFile="true" />
+    <!--  CREATE CHAT AND RELATIONS TABLES  -->
+
+    <changeSet id="13" author="hlasota">
+        <sqlFile path="schemas/chat/create-chat.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <changeSet id="14" author="hlasota">
+        <sqlFile path="schemas/chat/create-chat_message.sql" relativeToChangelogFile="true" />
+    </changeSet>
+
+    <changeSet id="15" author="hlasota">
+        <sqlFile path="schemas/chat/create-chat_room.sql" relativeToChangelogFile="true" />
     </changeSet>
 
 </databaseChangeLog>
