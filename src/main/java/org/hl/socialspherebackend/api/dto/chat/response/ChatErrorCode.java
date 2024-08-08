@@ -1,0 +1,19 @@
+package org.hl.socialspherebackend.api.dto.chat.response;
+
+public enum ChatErrorCode {
+    CHAT_NOT_FOUND,
+    CHAT_MESSAGES_NOT_FOUND,
+    SENDER_NOT_FOUND,
+    RECEIVER_NOT_FOUND,
+    USER_NOT_FOUND,
+    USER_HAS_NO_CHATS,
+    SERVER_ERROR,
+
+
+    CHAT_MESSAGE_REQUEST_IS_NULL,
+    MESSAGE_IS_NULL,
+    MESSAGE_IS_BLANK,
+    MESSAGE_LENGTH_IS_TOO_SHORT,
+    MESSAGE_LENGTH_IS_TOO_LONG,
+
+}
