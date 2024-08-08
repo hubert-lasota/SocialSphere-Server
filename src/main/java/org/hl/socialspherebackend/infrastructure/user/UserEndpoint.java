@@ -5,18 +5,29 @@ import org.hl.socialspherebackend.api.dto.user.request.UserFriendRequestDto;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.application.user.UserFacade;
+import org.hl.socialspherebackend.application.user.UserFriendRequestNotificationSubscriber;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/v1/user")
 public class UserEndpoint {
 
     private final UserFacade userFacade;
+    private final UserFriendRequestNotificationSubscriber notificationSubscriber;
 
-    public UserEndpoint(UserFacade userFacade) {
+    public UserEndpoint(UserFacade userFacade, UserFriendRequestNotificationSubscriber notificationSubscriber) {
         this.userFacade = userFacade;
+        this.notificationSubscriber = notificationSubscriber;
+    }
+
+
+    @GetMapping(value = "/friend/notification/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter subscribeFriendRequests(@RequestParam Long userId) {
+        return notificationSubscriber.subscribe(userId);
     }
 
     @PostMapping("/friend/send")

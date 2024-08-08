@@ -40,15 +40,18 @@ public class UserFacade {
     private final UserRepository userRepository;
     private final UserProfilePermissionChecker permissionChecker;
     private final RequestValidator<UserProfileRequest, UserValidateResult> userProfileValidator;
+    private final UserFriendRequestNotificationSender notificationSender;
     private final Clock clock;
 
     public UserFacade(UserRepository userRepository,
                       UserProfilePermissionChecker permissionChecker,
                       RequestValidator<UserProfileRequest, UserValidateResult> userProfileValidator,
+                      UserFriendRequestNotificationSender notificationSender,
                       Clock clock) {
         this.userRepository = userRepository;
         this.permissionChecker = permissionChecker;
         this.userProfileValidator = userProfileValidator;
+        this.notificationSender = notificationSender;
         this.clock = clock;
     }
 
@@ -91,6 +94,7 @@ public class UserFacade {
         userRepository.save(receiver);
 
         UserFriendRequestResponse response = UserMapper.fromEntityToResponse(userFriendRequest);
+        notificationSender.send(response);
         return DataResult.success(response);
     }
 
@@ -167,6 +171,7 @@ public class UserFacade {
         userRepository.save(receiver);
 
         UserFriendRequestResponse response = UserMapper.fromEntityToResponse(friendRequest);
+        notificationSender.send(response);
         return DataResult.success(response);
     }
 

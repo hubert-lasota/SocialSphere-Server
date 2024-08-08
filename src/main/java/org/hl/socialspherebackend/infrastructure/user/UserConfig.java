@@ -1,10 +1,7 @@
 package org.hl.socialspherebackend.infrastructure.user;
 
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
-import org.hl.socialspherebackend.application.user.UserFacade;
-import org.hl.socialspherebackend.application.user.UserProfilePermissionChecker;
-import org.hl.socialspherebackend.application.user.UserProfileRequestValidator;
-import org.hl.socialspherebackend.application.user.UserValidateResult;
+import org.hl.socialspherebackend.application.user.*;
 import org.hl.socialspherebackend.application.validator.RequestValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,9 +16,10 @@ public class UserConfig {
     @Bean
     public UserFacade userFacade(UserRepository userRepository,
                                  RequestValidator<UserProfileRequest, UserValidateResult> userProfileValidator,
+                                 UserFriendRequestNotificationSender notificationSender,
                                  UserProfilePermissionChecker profilePermissionChecker,
                                  Clock clock) {
-        return new UserFacade(userRepository, profilePermissionChecker, userProfileValidator, clock);
+        return new UserFacade(userRepository, profilePermissionChecker, userProfileValidator, notificationSender, clock);
     }
 
     @Bean
@@ -32,6 +30,11 @@ public class UserConfig {
     @Bean
     public UserProfilePermissionChecker userProfilePermissionChecker() {
         return new UserProfilePermissionChecker();
+    }
+
+    @Bean
+    public UserFriendRequestNotificationManager userFriendRequestNotificationManager() {
+        return new UserFriendRequestNotificationManager();
     }
 
     @Profile("dev")
