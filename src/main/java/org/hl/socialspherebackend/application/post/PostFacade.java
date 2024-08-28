@@ -14,6 +14,7 @@ import org.hl.socialspherebackend.application.pattern.behavioral.Observable;
 import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
 import org.hl.socialspherebackend.application.user.UserPermissionCheckResult;
 import org.hl.socialspherebackend.application.user.UserProfilePermissionChecker;
+import org.hl.socialspherebackend.application.util.FileUtils;
 import org.hl.socialspherebackend.application.util.PageUtils;
 import org.hl.socialspherebackend.application.validator.RequestValidator;
 import org.hl.socialspherebackend.infrastructure.post.PostCommentRepository;
@@ -25,13 +26,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+
+import static java.util.stream.Collectors.toSet;
 
 public class PostFacade implements Observable<PostUpdateDetails> {
 
@@ -81,7 +83,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     }
 
 
-    public DataResult<PostResponse, PostErrorCode> createPost(PostRequest request) {
+    public DataResult<PostResponse, PostErrorCode> createPost(PostRequest request, List<MultipartFile> images) {
         Optional<User> userOpt = userRepository.findById(request.userId());
         if(userOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
@@ -97,12 +99,24 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         Instant now = Instant.now(clock);
         Post post = new Post(request.content(), 0L, 0L, now, now, user);
 
-        if(request.images() != null) {
-            Set<PostImage> postImages = PostMapper.fromRequestToEntities(request.images());
-            postImages.forEach(img -> {
-                img.setPost(post);
-                post.appendPostImage(img);
-            });
+        if(images != null && !images.isEmpty()) {
+            Set<PostImage> postImages = new HashSet<>(images.size());
+            for(MultipartFile img : images) {
+                String type = img.getContentType();
+                String name = img.getOriginalFilename();
+                byte[] compressedImg;
+                try {
+                    compressedImg = FileUtils.compressFile(img.getBytes());
+                } catch (IOException e) {
+                    log.debug("Could not get bytes from image. Error: {}", e.getMessage());
+                    return DataResult.failure(PostErrorCode.POST_IMAGES_ARE_BROKEN,
+                            "Could not get bytes from image. Img = %s is broken".formatted(img.getOriginalFilename()));
+                }
+                PostImage postImage = new PostImage(compressedImg, type, name, post);
+                postImages.add(postImage);
+            }
+            post.setImages(postImages);
+
         }
 
         postRepository.save(post);
@@ -282,6 +296,10 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("created_at").descending());
         Page<Post> postPage = PageUtils.createPageImpl(permissionFilteredPosts, pageable);
+        if(postPage.isEmpty()) {
+            return DataResult.failure(PostErrorCode.NO_MORE_CONTENT_ON_PAGE,
+                    "Page(%d) has no content!".formatted(page));
+        }
         Page<PostResponse> response = postPage.map(post -> {
             boolean isLiked = checkIfCurrentUserLikedPost(user, post);
             return PostMapper.fromEntityToResponse(post, isLiked);
@@ -315,6 +333,115 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
         Page<PostCommentResponse> response = postCommentPage.map(PostMapper::fromEntityToResponse);
         return DataResult.success(response);
+    }
+
+    public DataResult<PostResponse, PostErrorCode> updatePost(Long postId, PostRequest request, List<MultipartFile> images) {
+        Optional<Post> postOpt = postRepository.findById(postId);
+        if(postOpt.isEmpty()) {
+            return DataResult.failure(PostErrorCode.POST_NOT_FOUND,
+                    "Could not find post with id = %d".formatted(postId));
+        }
+        PostValidateResult validateResult = postValidator.validate(request);
+        if(!validateResult.isValid()) {
+            return DataResult.failure(validateResult.code(), validateResult.message());
+        }
+
+        Post post = postOpt.get();
+        User postAuthor = post.getUser();
+        Long postAuthorId = postAuthor.getId();
+        Long requestUserId = request.userId();
+        if(!postAuthorId.equals(requestUserId)) {
+            return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_AUTHOR,
+                    "User with id = %d is not post(%d) author".formatted(postAuthorId, postId));
+        }
+
+        post.setContent(request.content());
+
+        if(images != null && !images.isEmpty()) {
+            Set<PostImage> postImages = images.stream()
+                    .map(img -> {
+                        String name = img.getOriginalFilename();
+                        String type;
+                        if(name == null) {
+                            name = "example";
+                            type = img.getContentType();
+                        } else {
+                            type = FileUtils.getTypeFromFilename(name);
+                        }
+
+                        try {
+                            byte[] contentBytes = img.getBytes();
+                            return new PostImage(contentBytes, type, name, post);
+                        } catch (IOException e) {
+                            log.error("Error occurred on getting bytes from img({}). Error message: {}", img, e.getMessage());
+                            return null;
+                        }
+                    })
+                    .collect(toSet());
+
+            post.setImages(postImages);
+        }
+
+        PostResponse response = PostMapper.fromEntityToResponse(post, checkIfCurrentUserLikedPost(postAuthor, post));
+        return DataResult.success(response);
+    }
+
+    public DataResult<PostCommentResponse, PostErrorCode> updatePostComment(Long postCommentId, PostCommentRequest request) {
+        Optional<PostComment> commentOpt = postCommentRepository.findById(postCommentId);
+        if(commentOpt.isEmpty()) {
+            return DataResult.failure(PostErrorCode.POST_COMMENT_NOT_FOUND,
+                    "Post comment with id=%d is not found".formatted(postCommentId));
+        }
+        PostValidateResult validateResult = postCommentValidator.validate(request);
+        if(!validateResult.isValid()) {
+            return DataResult.failure(validateResult.code(), validateResult.message());
+        }
+
+        PostComment comment = commentOpt.get();
+        User commentAuthor = comment.getCommentAuthor();
+        Long commentAuthorId = commentAuthor.getId();
+        if(commentAuthorId.equals(request.authorId())) {
+            return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,
+                    "User with id=%d is not comment(%d) author".formatted(commentAuthorId, postCommentId));
+        }
+
+        comment.setContent(request.content());
+
+        PostCommentResponse response = PostMapper.fromEntityToResponse(comment);
+        return DataResult.success(response);
+    }
+
+    public DataResult<String, PostErrorCode> deletePost(Long postId, Long userId) {
+        Optional<Post> postOpt = postRepository.findById(postId);
+        if(postOpt.isEmpty()) {
+            return DataResult.failure(PostErrorCode.POST_NOT_FOUND,
+                    "Post with id = %d is not found".formatted(postId));
+        }
+        Post post = postOpt.get();
+        User postAuthor = post.getUser();
+        if(!postAuthor.getId().equals(userId)) {
+            return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_AUTHOR,
+                    "User with id=%d is not post(%d) author".formatted(userId, postId));
+        }
+
+        postRepository.delete(post);
+        return DataResult.success("Post with id = %d has been deleted".formatted(postId));
+    }
+
+    public DataResult<String, PostErrorCode> deletePostComment(Long postCommentId, Long userId) {
+        Optional<PostComment> commentOpt = postCommentRepository.findById(postCommentId);
+        if(commentOpt.isEmpty()) {
+            return DataResult.failure(PostErrorCode.POST_COMMENT_NOT_FOUND,
+                    "PostComment with id = %d is not found".formatted(postCommentId));
+        }
+        PostComment comment = commentOpt.get();
+        User commentAuthor = comment.getCommentAuthor();
+        if(!commentAuthor.getId().equals(userId)) {
+            return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,
+                    "User with id=%d is not post(%d) author".formatted(userId, postCommentId));
+        }
+        postCommentRepository.delete(commentOpt.get());
+        return DataResult.success("PostComment with id = %d has been deleted".formatted(postCommentId));
     }
 
     private boolean checkIfCurrentUserLikedPost(User user, Post post) {

@@ -51,8 +51,8 @@ public class PostInitData implements InitializingBean {
 
                 for(int j = 0; j < size; j++) {
                     try {
-                        PostImage img = new PostImage(post,
-                                "image/png", FileUtils.compressFile(generateRandomImage()));
+                        PostImage img = new PostImage(
+                                FileUtils.compressFile(generateRandomImage()), "image/png", "example.png", post);
                         postImages.add(img);
                     } catch (IOException e) {
                         throw new RuntimeException(e);

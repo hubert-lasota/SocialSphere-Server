@@ -1,6 +1,7 @@
 package org.hl.socialspherebackend.application.user;
 
 import org.hl.socialspherebackend.api.dto.user.response.UserFriendRequestResponse;
+import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -9,19 +10,19 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class UserFriendRequestNotificationManager implements UserFriendRequestNotificationSender, UserFriendRequestNotificationSubscriber {
+public class UserFriendRequestNotificationManager implements Observer<UserFriendRequestResponse>, UserFriendRequestNotificationSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(UserFriendRequestNotificationManager.class);
 
     private final ConcurrentMap<Long, SseEmitter> clients = new ConcurrentHashMap<>();
 
     @Override
-    public void send(UserFriendRequestResponse notification) {
-        if(notification == null) {
-            log.debug("Notification is null");
+    public void update(UserFriendRequestResponse subject) {
+        if(subject == null) {
+            log.debug("Subject is null");
             return;
         }
-        sendNotification(notification);
+        sendNotification(subject);
     }
 
     @Override

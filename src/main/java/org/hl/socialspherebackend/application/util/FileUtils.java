@@ -46,4 +46,9 @@ public class FileUtils {
         return outputStream.toByteArray();
     }
 
+    public static String getTypeFromFilename(String filename) {
+        int pos = filename.lastIndexOf('.');
+        return filename.substring(pos + 1);
+    }
+
 }

@@ -11,6 +11,8 @@ import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.api.entity.user.UserProfile;
 import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
 import org.hl.socialspherebackend.api.entity.user.UserProfilePicture;
+import org.hl.socialspherebackend.application.pattern.behavioral.Observable;
+import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
 import org.hl.socialspherebackend.application.util.FileUtils;
 import org.hl.socialspherebackend.application.util.PageUtils;
 import org.hl.socialspherebackend.application.validator.RequestValidator;
@@ -33,28 +35,43 @@ import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toSet;
 
-public class UserFacade {
+public class UserFacade implements Observable<UserFriendRequestResponse> {
 
     private static final Logger log = LoggerFactory.getLogger(UserFacade.class);
 
     private final UserRepository userRepository;
     private final UserProfilePermissionChecker permissionChecker;
     private final RequestValidator<UserProfileRequest, UserValidateResult> userProfileValidator;
-    private final UserFriendRequestNotificationSender notificationSender;
     private final Clock clock;
+    private final Set<Observer<UserFriendRequestResponse>> observers;
 
     public UserFacade(UserRepository userRepository,
                       UserProfilePermissionChecker permissionChecker,
                       RequestValidator<UserProfileRequest, UserValidateResult> userProfileValidator,
-                      UserFriendRequestNotificationSender notificationSender,
-                      Clock clock) {
+                      Clock clock,
+                      Set<Observer<UserFriendRequestResponse>> observers) {
         this.userRepository = userRepository;
         this.permissionChecker = permissionChecker;
         this.userProfileValidator = userProfileValidator;
-        this.notificationSender = notificationSender;
         this.clock = clock;
+        this.observers = observers;
     }
 
+
+    @Override
+    public void addObserver(Observer<UserFriendRequestResponse> observer) {
+        observers.add(observer);
+    }
+
+    @Override
+    public void removeObserver(Observer<UserFriendRequestResponse> observer) {
+        observers.remove(observer);
+    }
+
+    @Override
+    public void notifyObservers(UserFriendRequestResponse subject) {
+        observers.forEach(observer -> observer.update(subject));
+    }
 
     public DataResult<UserFriendRequestResponse, UserErrorCode> sendFriendRequest(UserFriendRequestDto request) {
         Optional<User> senderOpt = userRepository.findById(request.senderId());
@@ -94,7 +111,7 @@ public class UserFacade {
         userRepository.save(receiver);
 
         UserFriendRequestResponse response = UserMapper.fromEntityToResponse(userFriendRequest);
-        notificationSender.send(response);
+        notifyObservers(response);
         return DataResult.success(response);
     }
 
@@ -171,7 +188,7 @@ public class UserFacade {
         userRepository.save(receiver);
 
         UserFriendRequestResponse response = UserMapper.fromEntityToResponse(friendRequest);
-        notificationSender.send(response);
+        notifyObservers(response);
         return DataResult.success(response);
     }
 
@@ -610,20 +627,24 @@ public class UserFacade {
         entity.setUserProfilePrivacyLevel(request.profilePrivacyLevel());
     }
 
-    public boolean removeFromFriendList(Long userId, Long friendId) {
+    public DataResult<String, UserErrorCode> removeFromFriendList(Long userId, Long friendId) {
         Optional<User> userOpt = userRepository.findById(userId);
         Optional<User> friendOpt = userRepository.findById(friendId);
-        if(userOpt.isEmpty() && friendOpt.isEmpty()) {
-            log.debug("User or Friend is empty");
-            return false;
+        if(userOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "User with id=%d not found".formatted(userId));
         }
+
+        if(friendOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "User friend with id=%d not found".formatted(friendId));
+        }
+
         User user = userOpt.get();
         User friend = friendOpt.get();
 
         user.removeFriend(friend);
         userRepository.save(user);
         userRepository.save(friend);
-        return true;
+        return DataResult.success("Successfully removed user with id=%d from friend list".formatted(friendId));
     }
 
 }

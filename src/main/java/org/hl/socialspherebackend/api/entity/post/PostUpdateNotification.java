@@ -18,7 +18,7 @@ public class PostUpdateNotification {
     private Post updatedPost;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
+    @JoinColumn(name = "updated_by", nullable = false, referencedColumnName = "id")
     private User updatedBy;
 
     @Enumerated(EnumType.STRING)

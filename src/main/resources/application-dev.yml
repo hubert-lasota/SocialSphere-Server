@@ -37,6 +37,8 @@ logging:
           post: DEBUG
           notification: DEBUG
           authorization: DEBUG
+          util: DEBUG
+          chat: DEBUG
     org.springframework:
       jdbc:
         core: INFO

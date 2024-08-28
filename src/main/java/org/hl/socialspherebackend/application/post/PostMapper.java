@@ -1,5 +1,6 @@
 package org.hl.socialspherebackend.application.post;
 
+import org.hl.socialspherebackend.api.dto.common.FileDetails;
 import org.hl.socialspherebackend.api.dto.post.response.PostCommentResponse;
 import org.hl.socialspherebackend.api.dto.post.response.PostResponse;
 import org.hl.socialspherebackend.api.dto.post.response.PostUpdateDetails;
@@ -16,19 +17,26 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toSet;
 
 public class PostMapper {
 
-    private static Logger log = LoggerFactory.getLogger(PostMapper.class);
+    private static final Logger log = LoggerFactory.getLogger(PostMapper.class);
 
     private PostMapper() { }
 
 
     public static PostResponse fromEntityToResponse(Post post, Boolean isLiked) {
-        Set<byte[]> decompressedPostImages = decompressPostImages(post);
+        Set<FileDetails> decompressedPostImages = null;
+        Set<PostImage> images = post.getImages();
+        if(images != null && !images.isEmpty()) {
+            decompressedPostImages = images.stream()
+                    .map(PostMapper::fromEntityToResponse)
+                    .collect(toSet());
+        } else {
+            log.debug("Post with id = {} has no images", post.getId());
+        }
         UserProfileResponse userProfileResponse = getUserProfileResponse(post);
 
         return new PostResponse(
@@ -70,6 +78,13 @@ public class PostMapper {
         return new PostUpdateNotificationResponse(id, postUpdateDetails, checked);
     }
 
+    public static FileDetails fromEntityToResponse(PostImage postImage) {
+        String name = postImage.getName();
+        String type = postImage.getType();
+        byte[] content = FileUtils.decompressFile(postImage.getImage());
+        return new FileDetails(name, type, content);
+    }
+
     public static PostUpdateDetails fromEntitiesToResponse(Post updatedPost,
                                                            PostUpdateType updateType,
                                                            User updatedBy,
@@ -80,17 +95,6 @@ public class PostMapper {
 
         return new PostUpdateDetails(postResponse, updateType, userWrapperResponse, updatedAt);
     }
-
-    public static Set<PostImage> fromRequestToEntities(Set<byte[]> postImages) {
-        return postImages.stream()
-                .map(image -> {
-                    PostImage postImage = new PostImage();
-                    postImage.setImage(image);
-                    return postImage;
-                })
-                .collect(Collectors.toSet());
-    }
-
 
     private static UserProfileResponse getUserProfileResponse(Post post) {
         UserProfile userProfile = post.getUser().getUserProfile();
@@ -108,19 +112,6 @@ public class PostMapper {
             return null;
         }
         return UserMapper.fromEntityToResponse(userProfile);
-    }
-
-    private static Set<byte[]> decompressPostImages(Post post) {
-        if(post.getImages() == null || post.getImages().isEmpty()) {
-            log.debug("Post with id = {} has no images", post.getId());
-            return null;
-        }
-
-        return post.getImages()
-                .stream()
-                .map(PostImage::getImage)
-                .map(FileUtils::decompressFile)
-                .collect(toSet());
     }
 
 }

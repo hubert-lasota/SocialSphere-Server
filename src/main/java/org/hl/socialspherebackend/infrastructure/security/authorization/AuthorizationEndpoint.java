@@ -22,7 +22,7 @@ public class AuthorizationEndpoint {
 
 
     @PostMapping("/create")
-    public ResponseEntity<DataResult<?, ?>> createLogin(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> createLogin(@RequestBody LoginRequest request) {
         DataResult<?, ?> result = authorizationFacade.createLogin(request);
 
         return result.isSuccess() ?
@@ -31,7 +31,7 @@ public class AuthorizationEndpoint {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<DataResult<?, ?>> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         DataResult<?, ?> result = authorizationFacade.login(request);
 
         return result.isSuccess() ?
@@ -40,7 +40,7 @@ public class AuthorizationEndpoint {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<DataResult<?, ?>> validateUserToken(@RequestBody UserTokenRequest request) {
+    public ResponseEntity<?> validateUserToken(@RequestBody UserTokenRequest request) {
         DataResult<?, ?> result = authorizationFacade.validateUserToken(request);
 
         return result.isSuccess() ?
@@ -49,7 +49,7 @@ public class AuthorizationEndpoint {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<DataResult<?, ?>> refreshUserToken(@RequestBody UserTokenRequest request) {
+    public ResponseEntity<?> refreshUserToken(@RequestBody UserTokenRequest request) {
         DataResult<?, ?> result = authorizationFacade.refreshUserToken(request);
 
         return result.isSuccess() ?

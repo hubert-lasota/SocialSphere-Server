@@ -3,7 +3,6 @@ package org.hl.socialspherebackend.api.entity.post;
 import jakarta.persistence.*;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 @Entity
 @Table(name = "post_image")
@@ -20,18 +19,22 @@ public class PostImage {
     @Column(name = "type", nullable = false)
     private String type;
 
+    @Column(name = "name", nullable = false)
+    private String name;
+
     @Lob
     @Column(name = "image", columnDefinition = "VARBINARY")
     private byte[] image;
 
-    public PostImage() {
+    protected PostImage() {
 
     }
 
-    public PostImage(Post post, String type, byte[] image) {
-        this.post = post;
-        this.type = type;
+    public PostImage(byte[] image, String type, String name, Post post) {
         this.image = image;
+        this.type = type;
+        this.name = name;
+        this.post = post;
     }
 
 
@@ -47,29 +50,12 @@ public class PostImage {
         return image;
     }
 
-    public void setImage(byte[] image) {
-        this.image = image;
+    public String getName() {
+        return name;
     }
 
     public String getType() {
         return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        PostImage postImage = (PostImage) o;
-        return Objects.equals(id, postImage.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
     }
 
     @Override
@@ -78,6 +64,7 @@ public class PostImage {
                 "id=" + id +
                 ", post=" + post +
                 ", type='" + type + '\'' +
+                ", name='" + name + '\'' +
                 ", image=" + Arrays.toString(image) +
                 '}';
     }

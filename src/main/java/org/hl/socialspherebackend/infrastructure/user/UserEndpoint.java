@@ -189,10 +189,11 @@ public class UserEndpoint {
 
     @DeleteMapping("/friend/remove")
     public ResponseEntity<?> removeFriendFromFriendList(@RequestParam Long userId, @RequestParam Long friendId) {
-        boolean isSuccess = userFacade.removeFromFriendList(userId, friendId);
+        DataResult<?, ?> result = userFacade.removeFromFriendList(userId, friendId);
 
-        return isSuccess ? ResponseEntity.ok(null)
-                : ResponseEntity.badRequest().body(null);
+        return result.isSuccess() ?
+                ResponseEntity.ok(result) :
+                ResponseEntity.badRequest().body(result);
     }
 
 }
