@@ -20,8 +20,8 @@ public class ChatEndpoint {
 
 
     @GetMapping
-    public ResponseEntity<?> findUserChats(@RequestParam Long userId) {
-        DataResult<?> result = chatFacade.findUserChats(userId);
+    public ResponseEntity<?> findUserChats() {
+        DataResult<?> result = chatFacade.findCurrentUserChats();
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :

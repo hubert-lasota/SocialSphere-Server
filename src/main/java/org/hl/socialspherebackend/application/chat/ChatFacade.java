@@ -8,6 +8,7 @@ import org.hl.socialspherebackend.api.dto.common.DataResult;
 import org.hl.socialspherebackend.api.entity.chat.Chat;
 import org.hl.socialspherebackend.api.entity.chat.ChatMessage;
 import org.hl.socialspherebackend.api.entity.user.User;
+import org.hl.socialspherebackend.application.util.AuthUtils;
 import org.hl.socialspherebackend.application.validator.RequestValidateResult;
 import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.hl.socialspherebackend.infrastructure.chat.ChatRepository;
@@ -97,23 +98,21 @@ public class ChatFacade {
     }
 
 
-    public DataResult<Set<ChatResponse>> findUserChats(Long userId) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<Set<ChatResponse>> findCurrentUserChats() {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            return DataResult.failure(ChatErrorCode.USER_NOT_FOUND,
-                    "User with id %d not found in database!".formatted(userId));
+            return DataResult.failure(ChatErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
-
-        List<Chat> chats = chatRepository.findChatsByUserId(userId);
+        User user = userOpt.get();
+        List<Chat> chats = chatRepository.findChatsByUserId(user.getId());
         if(chats.isEmpty()) {
-            return DataResult.failure(ChatErrorCode.USER_HAS_NO_CHATS,
-                    "User with id %d has no chats".formatted(userId));
+            return DataResult.failure(ChatErrorCode.USER_HAS_NO_CHATS,"Current user has no chats!");
         }
 
 
         Set<ChatResponse> responseSet = chats.stream()
                 .map(ch -> {
-                    User anotherUserInChat = chatRepository.findSecondUserInChat(ch.getId(), userId);
+                    User anotherUserInChat = chatRepository.findSecondUserInChat(ch.getId(), user.getId());
                     ChatMessage lastMessage = chatRepository.findLastChatMessageByChatId(ch.getId()).get();
                     return ChatMapper.fromEntitiesToResponse(ch, lastMessage, anotherUserInChat);
                 })

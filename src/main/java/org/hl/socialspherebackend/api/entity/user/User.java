@@ -33,10 +33,10 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Authority> authorities = new HashSet<>();
 
-    @OneToMany(mappedBy = "sender", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "sender", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> sentFriendRequests = new HashSet<>();
 
-    @OneToMany(mappedBy = "receiver", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "receiver", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> receivedFriendRequests = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.EAGER)
@@ -79,16 +79,8 @@ public class User implements UserDetails {
         authorities.add(authority);
     }
 
-    public void appendSentFriendRequest(UserFriendRequest friendRequest) {
-        this.sentFriendRequests.add(friendRequest);
-    }
-
     public void removeSentFriendRequest(UserFriendRequest friendRequest) {
         this.sentFriendRequests.remove(friendRequest);
-    }
-
-    public void appendReceivedFriendRequest(UserFriendRequest friendRequest) {
-        this.receivedFriendRequests.add(friendRequest);
     }
 
     public void removeReceivedFriendRequest(UserFriendRequest friendRequest) {

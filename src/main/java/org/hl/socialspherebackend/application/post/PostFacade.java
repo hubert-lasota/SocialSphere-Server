@@ -5,6 +5,7 @@ import org.hl.socialspherebackend.api.dto.post.request.PostCommentRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostLikeRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostRequest;
 import org.hl.socialspherebackend.api.dto.post.response.*;
+import org.hl.socialspherebackend.api.dto.user.response.UserErrorCode;
 import org.hl.socialspherebackend.api.entity.post.Post;
 import org.hl.socialspherebackend.api.entity.post.PostComment;
 import org.hl.socialspherebackend.api.entity.post.PostImage;
@@ -14,6 +15,7 @@ import org.hl.socialspherebackend.application.common.Observable;
 import org.hl.socialspherebackend.application.common.Observer;
 import org.hl.socialspherebackend.application.user.UserPermissionCheckResult;
 import org.hl.socialspherebackend.application.user.UserProfilePermissionChecker;
+import org.hl.socialspherebackend.application.util.AuthUtils;
 import org.hl.socialspherebackend.application.util.FileUtils;
 import org.hl.socialspherebackend.application.util.PageUtils;
 import org.hl.socialspherebackend.application.validator.RequestValidateResult;
@@ -82,10 +84,9 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
 
     public DataResult<PostResponse> createPost(PostRequest request, List<MultipartFile> images) {
-        Optional<User> userOpt = userRepository.findById(request.userId());
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "Could not find user with id = %d in database!".formatted(request.userId()));
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
         User user = userOpt.get();
 
@@ -123,10 +124,9 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     }
 
     public DataResult<PostCommentResponse> addCommentToPost(PostCommentRequest request) {
-        Optional<User> authorOpt = userRepository.findById(request.authorId());
+        Optional<User> authorOpt = AuthUtils.getCurrentUser();
         if(authorOpt.isEmpty()) {
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "Could not find author with id = %d in database!".formatted(request.authorId()));
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
 
         User author = authorOpt.get();
@@ -158,11 +158,10 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     }
 
     public DataResult<PostLikeResponse> addLikeToPost(PostLikeRequest request) {
-        Optional<User> likedByOpt = userRepository.findById(request.userId());
+        Optional<User> likedByOpt = AuthUtils.getCurrentUser();
 
         if(likedByOpt.isEmpty()) {
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "Could not find author with id = %d in database!".formatted(request.userId()));
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
         User likedBy = likedByOpt.get();
 
@@ -196,12 +195,11 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     }
 
 
-    public DataResult<PostLikeResponse> removeLikeFromPost(Long postId, Long userId) {
-        Optional<User> likedByOpt = userRepository.findById(userId);
+    public DataResult<PostLikeResponse> removeLikeFromPost(Long postId) {
+        Optional<User> likedByOpt = AuthUtils.getCurrentUser();
 
         if(likedByOpt.isEmpty()) {
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "Could not find author with id = %d in database!".formatted(userId));
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
         User likedBy = likedByOpt.get();
 
@@ -225,17 +223,16 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(new PostLikeResponse(post.getId(), likedBy.getId()));
     }
 
-    public DataResult<Page<PostResponse>> findUserPosts(Long currentUserId, Long userToCheckId, int page, int size) {
-        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
-        Optional<User> userToCheckOpt = userRepository.findById(userToCheckId);
+    public DataResult<Page<PostResponse>> findUserPosts(Long userId, int page, int size) {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        Optional<User> userToCheckOpt = userRepository.findById(userId);
         if(currentUserOpt.isEmpty()) {
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "Could not find user with id = %s".formatted(currentUserId));
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
 
         if(userToCheckOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "Could not find user with id = %d".formatted(userToCheckId));
+                    "Could not find user with id = %d".formatted(userId));
         }
 
         User currentUser = currentUserOpt.get();
@@ -256,12 +253,10 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<PostResponse>> findCurrentUserPosts(Long currentUserId, int page, int size) {
-        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
+    public DataResult<Page<PostResponse>> findCurrentUserPosts(int page, int size) {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         if(currentUserOpt.isEmpty()) {
-            log.debug("Could not find user with id = {}", currentUserId);
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "Could not find user with id = %d".formatted(currentUserId));
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
         User currentUser = currentUserOpt.get();
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt"));
@@ -274,12 +269,10 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<PostResponse>> findRecentPostsAvailableForUser(Long userId, int page, int size) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<Page<PostResponse>> findRecentPostsAvailableForCurrentUser(int page, int size) {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            log.debug("Could not find user with id = {}", userId);
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "Could not find user with id = %d".formatted(userId));
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
         User user = userOpt.get();
 
@@ -351,8 +344,15 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         Post post = postOpt.get();
         User postAuthor = post.getUser();
         Long postAuthorId = postAuthor.getId();
-        Long requestUserId = request.userId();
-        if(!postAuthorId.equals(requestUserId)) {
+
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+
+        User currentUser = currentUserOpt.get();
+        Long currentUserId = currentUser.getId();
+        if(!postAuthorId.equals(currentUserId)) {
             return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_AUTHOR,
                     "User with id = %d is not post(%d) author".formatted(postAuthorId, postId));
         }
@@ -402,7 +402,14 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         PostComment comment = commentOpt.get();
         User commentAuthor = comment.getCommentAuthor();
         Long commentAuthorId = commentAuthor.getId();
-        if(!commentAuthorId.equals(request.authorId())) {
+
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+        User currentUser = currentUserOpt.get();
+        Long currentUserId = currentUser.getId();
+        if(!commentAuthorId.equals(currentUserId)) {
             return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,
                     "User with id=%d is not comment(%d) author".formatted(commentAuthorId, postCommentId));
         }
@@ -413,7 +420,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<String> deletePost(Long postId, Long userId) {
+    public DataResult<String> deletePost(Long postId) {
         Optional<Post> postOpt = postRepository.findById(postId);
         if(postOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.POST_NOT_FOUND,
@@ -421,16 +428,23 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         }
         Post post = postOpt.get();
         User postAuthor = post.getUser();
-        if(!postAuthor.getId().equals(userId)) {
+        Long postAuthorId = postAuthor.getId();
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+        User currentUser = currentUserOpt.get();
+        Long currentUserId= currentUser.getId();
+        if(!postAuthorId.equals(currentUserId)) {
             return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_AUTHOR,
-                    "User with id=%d is not post(%d) author".formatted(userId, postId));
+                    "User with id=%d is not post(%d) author".formatted(currentUserId, postId));
         }
 
         postRepository.delete(post);
         return DataResult.success("Post with id = %d has been deleted".formatted(postId));
     }
 
-    public DataResult<String> deletePostComment(Long postCommentId, Long userId) {
+    public DataResult<String> deletePostComment(Long postCommentId) {
         Optional<PostComment> commentOpt = postCommentRepository.findById(postCommentId);
         if(commentOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.POST_COMMENT_NOT_FOUND,
@@ -438,9 +452,17 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         }
         PostComment comment = commentOpt.get();
         User commentAuthor = comment.getCommentAuthor();
-        if(!commentAuthor.getId().equals(userId)) {
-            return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,
-                    "User with id=%d is not post(%d) author".formatted(userId, postCommentId));
+        Long commentAuthorId = commentAuthor.getId();
+
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+        User currentUser = currentUserOpt.get();
+        Long currentUserId= currentUser.getId();
+
+        if(!commentAuthorId.equals(currentUserId)) {
+            return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,"Current user is not post comment author!");
         }
 
         Post post = comment.getPost();

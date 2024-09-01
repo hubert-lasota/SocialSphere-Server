@@ -13,6 +13,7 @@ import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
 import org.hl.socialspherebackend.api.entity.user.UserProfilePicture;
 import org.hl.socialspherebackend.application.common.Observable;
 import org.hl.socialspherebackend.application.common.Observer;
+import org.hl.socialspherebackend.application.util.AuthUtils;
 import org.hl.socialspherebackend.application.util.FileUtils;
 import org.hl.socialspherebackend.application.util.PageUtils;
 import org.hl.socialspherebackend.application.util.UserUtils;
@@ -75,42 +76,44 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         observers.forEach(observer -> observer.update(subject));
     }
 
-    public DataResult<UserFriendRequestResponse> sendFriendRequest(UserFriendRequestDto request) {
-        Optional<User> senderOpt = userRepository.findById(request.senderId());
-        Optional<User> receiverOpt = userRepository.findById(request.receiverId());
-        if(senderOpt.isEmpty()) {
-            return DataResult.failure(
-                    UserErrorCode.SENDER_NOT_FOUND,
-                    "sender with id = %d does not exits in database!".formatted(request.senderId())
-            );
+    public DataResult<UserFriendRequestResponse> sendFriendRequest(UserFriendRequestDto friendRequest) {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
+
+        Long receiverId = friendRequest.receiverId();
+        Optional<User> receiverOpt = userRepository.findById(receiverId);
+
         if(receiverOpt.isEmpty()) {
             return DataResult.failure(
                     UserErrorCode.RECEIVER_NOT_FOUND,
-                    "receiver with id = %d does not exits in database!".formatted(request.receiverId())
+                    "receiver with id = %d does not exits in database!".formatted(receiverId)
             );
         }
-        User sender = senderOpt.get();
+        User sender = currentUserOpt.get();
         User receiver = receiverOpt.get();
 
         boolean didSenderSentFriendRequest = sender.getSentFriendRequests()
                 .stream()
-                .findAny()
-                .isPresent();
+                .anyMatch(request -> request.getSender().equals(sender) && request.getReceiver().equals(receiver));
 
         if(didSenderSentFriendRequest) {
             return DataResult.failure(UserErrorCode.SENDER_ALREADY_SENT_FRIEND_REQUEST,
-                    "Sender with id = %s already sent friend request!".formatted(request.senderId()));
+                    "You already sent friend request!");
+        }
+
+        List<User> senderFriends = userRepository.findUserFriends(sender.getId());
+        boolean isReceiverInSenderFriendList = senderFriends.stream()
+                .anyMatch(friend -> friend.equals(receiver));
+
+        if(isReceiverInSenderFriendList) {
+            return DataResult.failure(UserErrorCode.RECEIVER_IS_ALREADY_FRIEND,
+                    "Receiver with id = %d is already in current user friend list!".formatted(receiverId));
         }
 
         UserFriendRequest userFriendRequest = new UserFriendRequest(sender, receiver, UserFriendRequestStatus.WAITING_FOR_RESPONSE);
-
-        sender.appendSentFriendRequest(userFriendRequest);
-        sender.appendReceivedFriendRequest(userFriendRequest);
-        receiver.appendSentFriendRequest(userFriendRequest);
-        receiver.appendReceivedFriendRequest(userFriendRequest);
         userRepository.save(sender);
-        userRepository.save(receiver);
 
         UserFriendRequestResponse response = UserMapper.fromEntityToResponse(userFriendRequest);
         notifyObservers(response);
@@ -118,26 +121,19 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
     }
 
     public DataResult<UserFriendRequestResponse>  acceptFriendRequest(UserFriendRequestDto request) {
-        return responseToFriendRequest(request.senderId(), request.receiverId(), UserFriendRequestStatus.ACCEPTED);
+        return responseToFriendRequest(request.receiverId(), UserFriendRequestStatus.ACCEPTED);
     }
-
 
     public DataResult<UserFriendRequestResponse>  rejectFriendRequest(UserFriendRequestDto request) {
-        return responseToFriendRequest(request.senderId(), request.receiverId(), UserFriendRequestStatus.REJECTED);
+        return responseToFriendRequest(request.receiverId(), UserFriendRequestStatus.REJECTED);
     }
 
-    private DataResult<UserFriendRequestResponse>  responseToFriendRequest(Long senderId,
-                                                            Long receiverId,
-                                                            UserFriendRequestStatus status) {
-
-        Optional<User> senderOpt = userRepository.findById(senderId);
+    private DataResult<UserFriendRequestResponse>  responseToFriendRequest(Long receiverId, UserFriendRequestStatus status) {
+        Optional<User> senderOpt = AuthUtils.getCurrentUser();
         Optional<User> receiverOpt = userRepository.findById(receiverId);
 
         if(senderOpt.isEmpty()) {
-            return DataResult.failure(
-                    UserErrorCode.SENDER_NOT_FOUND,
-                    "sender with id = %d does not exits in database!".formatted(senderId)
-            );
+            return DataResult.failure(UserErrorCode.SENDER_NOT_FOUND, "Current user not found!");
         }
         if(receiverOpt.isEmpty()) {
             return DataResult.failure(
@@ -162,12 +158,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         }
 
         if(friendRequests.size() > 1) {
-            log.debug("There is {} friend requests. Only one will be stored in database, rest are going to be removed",
+            log.error("There is {} friend requests. Only one will be stored in database, rest are going to be removed",
                     friendRequests.size());
-           saveFirstSentFriendRequestAndRemoveRest(sender, friendRequests);
-           saveFirstReceivedFriendRequestAndRemoveRest(receiver, friendRequests);
         }
-
 
         UserFriendRequest friendRequest = friendRequests.
                 stream().
@@ -176,51 +169,18 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
 
         friendRequest.setStatus(status);
 
-        sender.getSentFriendRequests().removeIf(fr -> fr.getId().equals(friendRequest.getId()));
-        sender.getReceivedFriendRequests().removeIf(fr -> fr.getId().equals(friendRequest.getId()));
-        receiver.getSentFriendRequests().removeIf(fr -> fr.getId().equals(friendRequest.getId()));
-        receiver.getReceivedFriendRequests().removeIf(fr -> fr.getId().equals(friendRequest.getId()));
-
-        sender.appendSentFriendRequest(friendRequest);
-        sender.appendReceivedFriendRequest(friendRequest);
-        receiver.appendSentFriendRequest(friendRequest);
-        receiver.appendReceivedFriendRequest(friendRequest);
-
         userRepository.save(sender);
-        userRepository.save(receiver);
 
         UserFriendRequestResponse response = UserMapper.fromEntityToResponse(friendRequest);
         notifyObservers(response);
         return DataResult.success(response);
     }
 
-    private void saveFirstSentFriendRequestAndRemoveRest(User user, Set<UserFriendRequest> friendRequests) {
-        boolean isFirst = true;
-        for(UserFriendRequest request : friendRequests) {
-            if(isFirst) {
-                isFirst = false;
-                continue;
-            }
-            user.removeSentFriendRequest(request);
-        }
-    }
-
-    private void saveFirstReceivedFriendRequestAndRemoveRest(User user, Set<UserFriendRequest> friendRequests) {
-        boolean isFirst = true;
-        for(UserFriendRequest request : friendRequests) {
-            if(isFirst) {
-                isFirst = false;
-                continue;
-            }
-            user.removeReceivedFriendRequest(request);
-        }
-    }
-
-    public DataResult<UserProfileResponse> createUserProfile(Long userId, UserProfileRequest request, MultipartFile profilePicture) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<UserProfileResponse> createUserProfile(UserProfileRequest request, MultipartFile profilePicture) {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
-                    "User with id = %d does not exits in database!".formatted(userId));
+                    "Could not find current user!");
         }
 
         User user = userOpt.get();
@@ -258,13 +218,10 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
     }
 
 
-    public DataResult<UserProfileConfigResponse> createUserProfileConfig(Long userId, UserProfileConfigRequest request) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<UserProfileConfigResponse> createUserProfileConfig(UserProfileConfigRequest request) {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            return DataResult.failure(
-                    UserErrorCode.USER_NOT_FOUND,
-                    "User with id = %d does not exits in database!".formatted(userId)
-            );
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
 
         User user = userOpt.get();
@@ -286,23 +243,42 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
     }
 
 
-    public DataResult<UserWrapperResponse> findUserById(Long userId, Long currentUserId) {
+    public DataResult<UserWrapperResponse> findCurrentUser() {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+        User user = currentUserOpt.get();
+        UserWrapperResponse response = UserMapper.fromEntityToUserWrapperResponse(user, RelationshipStatus.YOU);
+        return DataResult.success(response);
+    }
+
+    public DataResult<UserWrapperResponse> findUserById(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
                     "User with id = %d does not exits in database!".formatted(userId));
         }
         User user = userOpt.get();
-
-        RelationshipStatus relationshipStatus = null;
-        if(currentUserId != null) {
-            Optional<User> currentUserOpt = userRepository.findById(currentUserId);
-            User currentUser = currentUserOpt.get();
-            relationshipStatus = UserUtils.getRelationshipStatusFromUser(currentUser, user);
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
+        User currentUser = currentUserOpt.get();
 
-        UserWrapperResponse response = UserMapper.fromEntityToUserWrapperResponse(user, relationshipStatus);
+        RelationshipStatus status = UserUtils.getRelationshipStatusFromUser(currentUser, user);
+        UserWrapperResponse response = UserMapper.fromEntityToUserWrapperResponse(user, status);
         return DataResult.success(response);
+    }
+
+
+    public DataResult<UserProfileResponse> findCurrentUserProfile() {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+        User user = currentUserOpt.get();
+        return getUserProfileResult(user);
     }
 
     public DataResult<UserProfileResponse> findUserProfileByUserId(Long userId) {
@@ -314,17 +290,30 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
             );
         }
         User user = userOpt.get();
+        return getUserProfileResult(user);
+    }
+
+    private DataResult<UserProfileResponse> getUserProfileResult(User user) {
         UserProfile userProfile = user.getUserProfile();
 
         if(userProfile == null) {
             return DataResult.failure(
                     UserErrorCode.USER_PROFILE_NOT_FOUND,
-                    "User with id = %d does not have profile in database!".formatted(userId)
+                    "User with id = %d does not have profile in database!".formatted(user.getId())
             );
         }
 
         UserProfileResponse response = UserMapper.fromEntityToResponse(userProfile);
         return DataResult.success(response);
+    }
+
+    public DataResult<UserProfileConfigResponse> findCurrentUserProfileConfig() {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+        User user = currentUserOpt.get();
+        return getUserProfileConfigResult(user);
     }
 
     public DataResult<UserProfileConfigResponse> findUserProfileConfigByUserId(Long userId) {
@@ -337,12 +326,16 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         }
 
         User user = userOpt.get();
+        return getUserProfileConfigResult(user);
+    }
+
+    private DataResult<UserProfileConfigResponse> getUserProfileConfigResult(User user) {
         UserProfileConfig userProfileConfig = user.getUserProfileConfig();
 
         if(userProfileConfig == null) {
             return DataResult.failure(
                     UserErrorCode.USER_PROFILE_CONFIG_NOT_FOUND,
-                    "User profile config with user id = %d does not exits in database!".formatted(userId)
+                    "User profile config with user id = %d does not exits in database!".formatted(user.getId())
             );
         }
 
@@ -350,23 +343,17 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<UserFriendListResponse> findUserFriends(Long userId) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<UserFriendListResponse> findCurrentUserFriends() {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            return DataResult.failure(
-                    UserErrorCode.USER_NOT_FOUND,
-                    "User with id = %d does not exits in database!".formatted(userId)
-            );
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND,"Could not find current user!");
         }
 
         User user = userOpt.get();
 
         Set<User> userFriends = user.getFriends();
         if(userFriends.isEmpty()) {
-            return DataResult.failure(
-                    UserErrorCode.USER_HAS_NO_FRIENDS,
-                    "User with id = %d does not have friends!".formatted(userId)
-            );
+            return DataResult.failure(UserErrorCode.USER_HAS_NO_FRIENDS, "Current user has no friends!");
         }
 
         Set<UserFriendResponse> userFriendsResponse = userFriends
@@ -378,16 +365,17 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<UserFriendResponse>> findUserFriends(Long userId, int page, int size) {
-        if(!userRepository.existsById(userId)) {
-            return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
-                    "User with id = %d does not exists in database!".formatted(userId));
+    public DataResult<Page<UserFriendResponse>> findCurrentUserFriends(int page, int size) {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
 
-        List<User> userFriends = userRepository.findUserFriends(userId);
+        User currentUser = currentUserOpt.get();
+
+        List<User> userFriends = userRepository.findUserFriends(currentUser.getId());
         if(userFriends.isEmpty()) {
-            return DataResult.failure(UserErrorCode.USER_HAS_NO_FRIENDS,
-                    "User with id = %d does not have friends!".formatted(userId));
+            return DataResult.failure(UserErrorCode.USER_HAS_NO_FRIENDS, "Current user has no friends!");
         }
 
         Pageable pageable = PageRequest.of(page, size);
@@ -396,16 +384,15 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<UserFriendResponse>> findCheckedUserFriends(Long currentUserId, Long userToCheckId, int page, int size) {
-        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
-        Optional<User> userToCheckOpt = userRepository.findById(userToCheckId);
+    public DataResult<Page<UserFriendResponse>> findUserFriends(Long userId, int page, int size) {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        Optional<User> userToCheckOpt = userRepository.findById(userId);
         if(currentUserOpt.isEmpty()) {
-            return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
-                    "Current user with id = %d does not exits in database!".formatted(currentUserId));
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
         if(userToCheckOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
-                    "User to check with id = %d does not exits in database!".formatted(userToCheckId));
+                    "User with id = %d does not exits in database!".formatted(userId));
         }
         User currentUser = currentUserOpt.get();
         User userToCheck = userToCheckOpt.get();
@@ -416,10 +403,10 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
                     permissionResult.notAllowedErrorMessage());
         }
 
-        List<User> userToCheckFriends = userRepository.findUserFriends(userToCheckId);
+        List<User> userToCheckFriends = userRepository.findUserFriends(userId);
         if(userToCheckFriends.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_HAS_NO_FRIENDS,
-                    "User to check with id = %d does not have friends!".formatted(userToCheckId));
+                    "User to check with id = %d does not have friends!".formatted(userId));
         }
 
         Pageable pageable = PageRequest.of(page, size);
@@ -432,13 +419,12 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Set<UserHeaderResponse>> findUsers(Long userId, final String containsString, Integer maxSize) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        if(userOpt.isEmpty()) {
-            return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
-                    "User with id = %d does not exits in database".formatted(userId));
+    public DataResult<Set<UserHeaderResponse>> findUsers(final String containsString, Integer maxSize) {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
-        User currentUser = userOpt.get();
+        User currentUser = currentUserOpt.get();
 
         List<User> userEntities = userRepository.findUserHeaders();
         if(userEntities.isEmpty()) {
@@ -518,46 +504,37 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return true;
     }
 
-    public DataResult<byte[]> findUserProfilePictureByUserId(Long userId) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<byte[]> findCurrentUserProfilePicture() {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
-                    "Cannot find user profile picture because user with id = %d does not exits in database!".formatted(userId));
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND,"Could not find current user!");
         }
         User user = userOpt.get();
 
         UserProfile userProfile = user.getUserProfile();
         if(userProfile == null) {
-            return DataResult.failure(UserErrorCode.USER_PROFILE_NOT_FOUND,
-                    "Cannot find user profile picture because user with id = %d does not have profile!".formatted(userId));
+            return DataResult.failure(UserErrorCode.USER_PROFILE_NOT_FOUND, "Current user has no profile");
         }
 
         UserProfilePicture userProfilePicture = userProfile.getProfilePicture();
         if(userProfilePicture == null) {
-            return DataResult.failure(UserErrorCode.USER_PROFILE_PICTURE_NOT_FOUND,
-                    "Cannot find user profile picture because user with id = %d does not have profile picture!".formatted(userId));
+            return DataResult.failure(UserErrorCode.USER_PROFILE_PICTURE_NOT_FOUND, "Current user has no profile picture!");
         }
 
         byte[] response = FileUtils.decompressFile(userProfilePicture.getImage());
         return DataResult.success(response);
     }
 
-    public DataResult<UserProfileResponse> updateUserProfile(Long userId, UserProfileRequest request, MultipartFile profilePicture) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<UserProfileResponse> updateCurrentUserProfile(UserProfileRequest request, MultipartFile profilePicture) {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            return DataResult.failure(
-                    UserErrorCode.USER_NOT_FOUND,
-                    "User id = %d doesn't exits in database".formatted(userId)
-            );
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
         User user = userOpt.get();
 
         UserProfile userProfile = user.getUserProfile();
         if(userProfile == null) {
-            return DataResult.failure(
-                    UserErrorCode.USER_PROFILE_NOT_FOUND,
-                    "User Profile with user id = %d doesn't exits in database".formatted(userId)
-            );
+            return DataResult.failure(UserErrorCode.USER_PROFILE_NOT_FOUND, "Current user has no profile!");
         }
 
         RequestValidateResult validateResult = requestValidator.validate(request);
@@ -598,23 +575,17 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
 
     }
 
-    public DataResult<UserProfileConfigResponse> updateUserProfileConfig(Long userId, UserProfileConfigRequest request) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<UserProfileConfigResponse> updateCurrentUserProfileConfig(UserProfileConfigRequest request) {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            return DataResult.failure(
-                    UserErrorCode.USER_NOT_FOUND,
-                    "User id = %d doesn't exits in database".formatted(userId)
-            );
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
 
         User user = userOpt.get();
         UserProfileConfig userProfileConfig = user.getUserProfileConfig();
 
         if(userProfileConfig == null) {
-            return DataResult.failure(
-                    UserErrorCode.USER_PROFILE_CONFIG_NOT_FOUND,
-                    "User Profile Config with user id = %d doesn't exits in database".formatted(userId)
-            );
+            return DataResult.failure(UserErrorCode.USER_PROFILE_CONFIG_NOT_FOUND, "Current user has no profile config!");
         }
 
         updateUserProfileConfigEntity(userProfileConfig, request);
@@ -629,11 +600,11 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         entity.setUserProfilePrivacyLevel(request.profilePrivacyLevel());
     }
 
-    public DataResult<String> removeFromFriendList(Long userId, Long friendId) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<String> removeFromFriendList(Long friendId) {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         Optional<User> friendOpt = userRepository.findById(friendId);
         if(userOpt.isEmpty()) {
-            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "User with id=%d not found".formatted(userId));
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
 
         if(friendOpt.isEmpty()) {

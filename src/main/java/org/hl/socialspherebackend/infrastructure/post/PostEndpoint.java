@@ -65,14 +65,13 @@ public class PostEndpoint {
 
     @GetMapping
     public ResponseEntity<?> findUserPosts(
-            @RequestParam Long currentUserId,
-            @RequestParam(required = false, defaultValue = "-1") Long userToCheckId,
+            @RequestParam(required = false, defaultValue = "-1") Long userId,
             @RequestParam Integer page,
             @RequestParam Integer size
     ) {
-        DataResult<?> result = userToCheckId.equals(-1L) ?
-                postFacade.findCurrentUserPosts(currentUserId, page, size) :
-                postFacade.findUserPosts(currentUserId, userToCheckId, page, size);
+        DataResult<?> result = userId.equals(-1L) ?
+                postFacade.findCurrentUserPosts(page, size) :
+                postFacade.findUserPosts(userId, page, size);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -81,11 +80,10 @@ public class PostEndpoint {
     
     @GetMapping("/recent")
     public ResponseEntity<?> findRecentPostsAvailableForUser(
-            @RequestParam Long userId,
             @RequestParam Integer page,
             @RequestParam Integer size
     ) {
-        DataResult<?> result = postFacade.findRecentPostsAvailableForUser(userId, page, size);
+        DataResult<?> result = postFacade.findRecentPostsAvailableForCurrentUser(page, size);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -128,8 +126,8 @@ public class PostEndpoint {
 
 
     @DeleteMapping(value = "/like/remove")
-    public ResponseEntity<?> removeLikeFromPost(@RequestParam Long postId, @RequestParam Long userId) {
-        DataResult<?> result = postFacade.removeLikeFromPost(postId, userId);
+    public ResponseEntity<?> removeLikeFromPost(@RequestParam Long postId) {
+        DataResult<?> result = postFacade.removeLikeFromPost(postId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -137,8 +135,8 @@ public class PostEndpoint {
     }
 
     @DeleteMapping(value = "/{id}")
-    public ResponseEntity<?> deletePost(@PathVariable(value = "id") Long postId, @RequestParam Long userId) {
-        DataResult<?> result = postFacade.deletePost(postId, userId);
+    public ResponseEntity<?> deletePost(@PathVariable(value = "id") Long postId) {
+        DataResult<?> result = postFacade.deletePost(postId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -146,8 +144,8 @@ public class PostEndpoint {
     }
 
     @DeleteMapping(value = "/comment/{id}")
-    public ResponseEntity<?> deletePostComment(@PathVariable(value = "id") Long postCommentId, @RequestParam Long userId) {
-        DataResult<?> result = postFacade.deletePostComment(postCommentId, userId);
+    public ResponseEntity<?> deletePostComment(@PathVariable(value = "id") Long postCommentId) {
+        DataResult<?> result = postFacade.deletePostComment(postCommentId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
