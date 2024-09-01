@@ -1,4 +1,4 @@
-package org.hl.socialspherebackend.application.user;
+package org.hl.socialspherebackend.application.util;
 
 import org.hl.socialspherebackend.api.dto.user.response.RelationshipStatus;
 import org.hl.socialspherebackend.api.entity.user.User;

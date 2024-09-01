@@ -1,7 +1,7 @@
 package org.hl.socialspherebackend.application.user;
 
 import org.hl.socialspherebackend.api.dto.user.response.UserFriendRequestResponse;
-import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
+import org.hl.socialspherebackend.application.common.Observer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;

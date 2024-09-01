@@ -21,7 +21,7 @@ public class ChatEndpoint {
 
     @GetMapping
     public ResponseEntity<?> findUserChats(@RequestParam Long userId) {
-        DataResult<?, ?> result = chatFacade.findUserChats(userId);
+        DataResult<?> result = chatFacade.findUserChats(userId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -30,7 +30,7 @@ public class ChatEndpoint {
 
     @GetMapping(value = "/message")
     public ResponseEntity<?> findChatMessages(@RequestParam Long chatId) {
-        DataResult<?, ?> result = chatFacade.findChatMessages(chatId);
+        DataResult<?> result = chatFacade.findChatMessages(chatId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :

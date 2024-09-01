@@ -22,7 +22,7 @@ public class ChatWebSocketEndpoint {
 
     @MessageMapping("/chat")
     public void sendMessageToUser(@Payload ChatMessageRequest request) {
-        DataResult<?, ?> result = chatFacade.sendMessage(request);
+        DataResult<?> result = chatFacade.sendMessage(request);
         if(result.isFailure()) {
             return;
         }

@@ -59,7 +59,7 @@ public class PostNotificationFacade {
     }
 
 
-    public DataResult<Set<PostUpdateNotificationResponse>, PostErrorCode> findPostUpdateNotifications(Long userId) {
+    public DataResult<Set<PostUpdateNotificationResponse>> findPostUpdateNotifications(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.USER_NOT_FOUND,

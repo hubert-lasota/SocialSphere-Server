@@ -31,8 +31,8 @@ public class UserEndpoint {
     }
 
     @PostMapping("/friend/send")
-    public ResponseEntity<DataResult<?, ?>> sendFriendRequest(UserFriendRequestDto request) {
-        DataResult<?, ?> result = userFacade.sendFriendRequest(request);
+    public ResponseEntity<DataResult<?>> sendFriendRequest(UserFriendRequestDto request) {
+        DataResult<?> result = userFacade.sendFriendRequest(request);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -41,8 +41,8 @@ public class UserEndpoint {
 
 
     @PostMapping("/friend/accept")
-    public ResponseEntity<DataResult<?, ?>> acceptFriendRequest(UserFriendRequestDto request) {
-        DataResult<?, ?> result = userFacade.acceptFriendRequest(request);
+    public ResponseEntity<DataResult<?>> acceptFriendRequest(UserFriendRequestDto request) {
+        DataResult<?> result = userFacade.acceptFriendRequest(request);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -50,8 +50,8 @@ public class UserEndpoint {
     }
 
     @PostMapping("/friend/reject")
-    public ResponseEntity<DataResult<?, ?>> rejectFriendRequest(UserFriendRequestDto request) {
-        DataResult<?, ?> result = userFacade.rejectFriendRequest(request);
+    public ResponseEntity<DataResult<?>> rejectFriendRequest(UserFriendRequestDto request) {
+        DataResult<?> result = userFacade.rejectFriendRequest(request);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -59,12 +59,12 @@ public class UserEndpoint {
     }
 
     @PostMapping("/profile")
-    public ResponseEntity<DataResult<?, ?>> createUserProfile(
+    public ResponseEntity<DataResult<?>> createUserProfile(
             @RequestParam Long userId,
             @RequestParam("profilePicture") MultipartFile profilePicture,
             @RequestBody UserProfileRequest request
     ) {
-        DataResult<?, ?> result = userFacade.createUserProfile(userId, request, profilePicture);
+        DataResult<?> result = userFacade.createUserProfile(userId, request, profilePicture);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -72,11 +72,11 @@ public class UserEndpoint {
     }
 
     @PostMapping("/profile/config")
-    public ResponseEntity<DataResult<?, ?>> createUserProfileConfig(
+    public ResponseEntity<DataResult<?>> createUserProfileConfig(
             @RequestParam Long userId,
             @RequestBody UserProfileConfigRequest request
     ) {
-        DataResult<?, ?> result = userFacade.createUserProfileConfig(userId, request);
+        DataResult<?> result = userFacade.createUserProfileConfig(userId, request);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -84,8 +84,8 @@ public class UserEndpoint {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DataResult<?, ?>> findUserById(@PathVariable Long id, @RequestParam(required = false) Long currentUserId) {
-        DataResult<?, ?> result = userFacade.findUserById(id, currentUserId);
+    public ResponseEntity<DataResult<?>> findUserById(@PathVariable Long id, @RequestParam(required = false) Long currentUserId) {
+        DataResult<?> result = userFacade.findUserById(id, currentUserId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -94,8 +94,8 @@ public class UserEndpoint {
 
 
     @GetMapping("/profile")
-    public ResponseEntity<DataResult<?, ?>> findUserProfileByUserId(@RequestParam Long userId) {
-        DataResult<?, ?> result = userFacade.findUserProfileByUserId(userId);
+    public ResponseEntity<DataResult<?>> findUserProfileByUserId(@RequestParam Long userId) {
+        DataResult<?> result = userFacade.findUserProfileByUserId(userId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -103,8 +103,8 @@ public class UserEndpoint {
     }
 
     @GetMapping("/profile/picture")
-    public ResponseEntity<DataResult<?, ?>> findProfilePictureByUserId(@RequestParam Long userId) {
-        DataResult<?, ?> result = userFacade.findUserProfilePictureByUserId(userId);
+    public ResponseEntity<DataResult<?>> findProfilePictureByUserId(@RequestParam Long userId) {
+        DataResult<?> result = userFacade.findUserProfilePictureByUserId(userId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -112,8 +112,8 @@ public class UserEndpoint {
     }
 
     @GetMapping("/profile/config")
-    public ResponseEntity<DataResult<?, ?>> findUserProfileConfigByUserId(@RequestParam Long userId) {
-        DataResult<?, ?> result = userFacade.findUserProfileConfigByUserId(userId);
+    public ResponseEntity<DataResult<?>> findUserProfileConfigByUserId(@RequestParam Long userId) {
+        DataResult<?> result = userFacade.findUserProfileConfigByUserId(userId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -121,7 +121,7 @@ public class UserEndpoint {
     }
 
     @GetMapping("/friend")
-    public ResponseEntity<DataResult<?, ?>> findUserFriends(
+    public ResponseEntity<DataResult<?>> findUserFriends(
             @RequestParam(required = false, defaultValue = "-1") Long currentUserId,
             @RequestParam Long userId,
             @RequestParam Integer page,
@@ -129,14 +129,14 @@ public class UserEndpoint {
     ) {
 
         if(page == null || size == null) {
-            DataResult<?, ?> userFriendListResult = userFacade.findUserFriends(userId);
+            DataResult<?> userFriendListResult = userFacade.findUserFriends(userId);
 
             return userFriendListResult.isSuccess() ?
                     ResponseEntity.ok(userFriendListResult) :
                     ResponseEntity.badRequest().body(userFriendListResult);
         }
 
-        DataResult<?, ?> result;
+        DataResult<?> result;
         if (currentUserId.equals(-1L)) {
             result = userFacade.findUserFriends(userId, page, size);
         } else {
@@ -149,12 +149,12 @@ public class UserEndpoint {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<DataResult<?, ?>> searchFriends(
+    public ResponseEntity<DataResult<?>> searchFriends(
             @RequestParam Long userId,
             @RequestParam String containsString,
             @RequestParam Integer maxSize
     ) {
-        DataResult<?, ?> result = userFacade.findUsers(userId, containsString, maxSize);
+        DataResult<?> result = userFacade.findUsers(userId, containsString, maxSize);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -162,12 +162,12 @@ public class UserEndpoint {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<DataResult<?, ?>> updateUserProfile(
+    public ResponseEntity<DataResult<?>> updateUserProfile(
             @RequestParam Long userId,
             @RequestPart("profilePicture") MultipartFile profilePicture,
             @RequestPart("request") UserProfileRequest request
     ) {
-        DataResult<?, ?> result = userFacade.updateUserProfile(userId, request, profilePicture);
+        DataResult<?> result = userFacade.updateUserProfile(userId, request, profilePicture);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -176,11 +176,11 @@ public class UserEndpoint {
 
 
     @PutMapping("/profile/config")
-    public ResponseEntity<DataResult<?, ?>> updateUserConfig(
+    public ResponseEntity<DataResult<?>> updateUserConfig(
             @RequestParam Long userId,
             @RequestBody UserProfileConfigRequest request
     ) {
-        DataResult<?, ?> result = userFacade.updateUserProfileConfig(userId, request);
+        DataResult<?> result = userFacade.updateUserProfileConfig(userId, request);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -189,7 +189,7 @@ public class UserEndpoint {
 
     @DeleteMapping("/friend/remove")
     public ResponseEntity<?> removeFriendFromFriendList(@RequestParam Long userId, @RequestParam Long friendId) {
-        DataResult<?, ?> result = userFacade.removeFromFriendList(userId, friendId);
+        DataResult<?> result = userFacade.removeFromFriendList(userId, friendId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :

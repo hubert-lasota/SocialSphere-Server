@@ -1,7 +1,7 @@
 package org.hl.socialspherebackend.application.post;
 
 import org.hl.socialspherebackend.api.dto.post.response.PostUpdateDetails;
-import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
+import org.hl.socialspherebackend.application.common.Observer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;

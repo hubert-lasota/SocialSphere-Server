@@ -1,12 +1,12 @@
 package org.hl.socialspherebackend.infrastructure.post;
 
-import org.hl.socialspherebackend.api.dto.post.request.PostCommentRequest;
-import org.hl.socialspherebackend.api.dto.post.request.PostRequest;
 import org.hl.socialspherebackend.api.dto.post.response.PostUpdateDetails;
-import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
-import org.hl.socialspherebackend.application.post.*;
+import org.hl.socialspherebackend.application.common.Observer;
+import org.hl.socialspherebackend.application.post.PostFacade;
+import org.hl.socialspherebackend.application.post.PostNotificationFacade;
+import org.hl.socialspherebackend.application.post.PostNotificationManager;
 import org.hl.socialspherebackend.application.user.UserProfilePermissionChecker;
-import org.hl.socialspherebackend.application.validator.RequestValidator;
+import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,22 +23,11 @@ public class PostConfig {
                                  PostCommentRepository postCommentRepository,
                                  UserRepository userRepository,
                                  UserProfilePermissionChecker permissionChecker,
-                                 RequestValidator<PostRequest, PostValidateResult> postValidator,
-                                 RequestValidator<PostCommentRequest, PostValidateResult> postCommentValidator,
+                                 RequestValidatorChain requestValidatorChain,
                                  Set<Observer<PostUpdateDetails>> observers,
                                  Clock clock) {
 
-        return new PostFacade(postRepository, postCommentRepository, userRepository, permissionChecker, postValidator, postCommentValidator, observers, clock);
-    }
-
-    @Bean
-    public PostRequestValidator postValidator() {
-        return new PostRequestValidator();
-    }
-
-    @Bean
-    public PostCommentRequestValidator postCommentValidator() {
-        return new PostCommentRequestValidator();
+        return new PostFacade(postRepository, postCommentRepository, userRepository, permissionChecker, requestValidatorChain, observers, clock);
     }
 
     @Bean

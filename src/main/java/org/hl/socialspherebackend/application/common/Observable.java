@@ -1,4 +1,4 @@
-package org.hl.socialspherebackend.application.pattern.behavioral;
+package org.hl.socialspherebackend.application.common;
 
 public interface Observable<T> {
 

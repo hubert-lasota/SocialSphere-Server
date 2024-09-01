@@ -10,13 +10,14 @@ import org.hl.socialspherebackend.api.entity.post.PostComment;
 import org.hl.socialspherebackend.api.entity.post.PostImage;
 import org.hl.socialspherebackend.api.entity.post.PostUpdateType;
 import org.hl.socialspherebackend.api.entity.user.User;
-import org.hl.socialspherebackend.application.pattern.behavioral.Observable;
-import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
+import org.hl.socialspherebackend.application.common.Observable;
+import org.hl.socialspherebackend.application.common.Observer;
 import org.hl.socialspherebackend.application.user.UserPermissionCheckResult;
 import org.hl.socialspherebackend.application.user.UserProfilePermissionChecker;
 import org.hl.socialspherebackend.application.util.FileUtils;
 import org.hl.socialspherebackend.application.util.PageUtils;
-import org.hl.socialspherebackend.application.validator.RequestValidator;
+import org.hl.socialspherebackend.application.validator.RequestValidateResult;
+import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.hl.socialspherebackend.infrastructure.post.PostCommentRepository;
 import org.hl.socialspherebackend.infrastructure.post.PostRepository;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
@@ -43,8 +44,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     private final PostCommentRepository postCommentRepository;
     private final UserRepository userRepository;
     private final UserProfilePermissionChecker permissionChecker;
-    private final RequestValidator<PostRequest, PostValidateResult> postValidator;
-    private final RequestValidator<PostCommentRequest, PostValidateResult> postCommentValidator;
+    private final RequestValidatorChain requestValidator;
     private final Set<Observer<PostUpdateDetails>> observers;
     private final Clock clock;
 
@@ -52,16 +52,14 @@ public class PostFacade implements Observable<PostUpdateDetails> {
                       PostCommentRepository postCommentRepository,
                       UserRepository userRepository,
                       UserProfilePermissionChecker permissionChecker,
-                      RequestValidator<PostRequest, PostValidateResult> postValidator,
-                      RequestValidator<PostCommentRequest, PostValidateResult> postCommentValidator,
+                      RequestValidatorChain requestValidator,
                       Set<Observer<PostUpdateDetails>> observers,
                       Clock clock) {
         this.postRepository = postRepository;
         this.postCommentRepository = postCommentRepository;
         this.userRepository = userRepository;
         this.permissionChecker = permissionChecker;
-        this.postValidator = postValidator;
-        this.postCommentValidator = postCommentValidator;
+        this.requestValidator = requestValidator;
         this.observers = observers;
         this.clock = clock;
     }
@@ -83,7 +81,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     }
 
 
-    public DataResult<PostResponse, PostErrorCode> createPost(PostRequest request, List<MultipartFile> images) {
+    public DataResult<PostResponse> createPost(PostRequest request, List<MultipartFile> images) {
         Optional<User> userOpt = userRepository.findById(request.userId());
         if(userOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
@@ -91,9 +89,9 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         }
         User user = userOpt.get();
 
-        PostValidateResult validateResult = postValidator.validate(request);
-        if(!validateResult.isValid()) {
-            return DataResult.failure(validateResult.code(), validateResult.message());
+        RequestValidateResult validateResult = requestValidator.validate(request);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         Instant now = Instant.now(clock);
@@ -124,7 +122,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<PostCommentResponse, PostErrorCode> addCommentToPost(PostCommentRequest request) {
+    public DataResult<PostCommentResponse> addCommentToPost(PostCommentRequest request) {
         Optional<User> authorOpt = userRepository.findById(request.authorId());
         if(authorOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
@@ -139,9 +137,9 @@ public class PostFacade implements Observable<PostUpdateDetails> {
                     "Could not find post with id = %d in database!".formatted(request.postId()));
         }
 
-        PostValidateResult validateResult = postCommentValidator.validate(request);
-        if(!validateResult.isValid()) {
-            return DataResult.failure(validateResult.code(), validateResult.message());
+        RequestValidateResult validateResult = requestValidator.validate(request);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         Post post = postOpt.get();
@@ -159,7 +157,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<PostLikeResponse, PostErrorCode> addLikeToPost(PostLikeRequest request) {
+    public DataResult<PostLikeResponse> addLikeToPost(PostLikeRequest request) {
         Optional<User> likedByOpt = userRepository.findById(request.userId());
 
         if(likedByOpt.isEmpty()) {
@@ -198,7 +196,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     }
 
 
-    public DataResult<PostLikeResponse, PostErrorCode> removeLikeFromPost(Long postId, Long userId) {
+    public DataResult<PostLikeResponse> removeLikeFromPost(Long postId, Long userId) {
         Optional<User> likedByOpt = userRepository.findById(userId);
 
         if(likedByOpt.isEmpty()) {
@@ -227,7 +225,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(new PostLikeResponse(post.getId(), likedBy.getId()));
     }
 
-    public DataResult<Page<PostResponse>, PostErrorCode> findUserPosts(Long currentUserId, Long userToCheckId, int page, int size) {
+    public DataResult<Page<PostResponse>> findUserPosts(Long currentUserId, Long userToCheckId, int page, int size) {
         Optional<User> currentUserOpt = userRepository.findById(currentUserId);
         Optional<User> userToCheckOpt = userRepository.findById(userToCheckId);
         if(currentUserOpt.isEmpty()) {
@@ -258,7 +256,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<PostResponse>, PostErrorCode> findCurrentUserPosts(Long currentUserId, int page, int size) {
+    public DataResult<Page<PostResponse>> findCurrentUserPosts(Long currentUserId, int page, int size) {
         Optional<User> currentUserOpt = userRepository.findById(currentUserId);
         if(currentUserOpt.isEmpty()) {
             log.debug("Could not find user with id = {}", currentUserId);
@@ -276,7 +274,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<PostResponse>, PostErrorCode> findRecentPostsAvailableForUser(Long userId, int page, int size) {
+    public DataResult<Page<PostResponse>> findRecentPostsAvailableForUser(Long userId, int page, int size) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             log.debug("Could not find user with id = {}", userId);
@@ -307,7 +305,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<PostCommentResponse>, PostErrorCode> findPostComments(Long postId, int page, int size) {
+    public DataResult<Page<PostCommentResponse>> findPostComments(Long postId, int page, int size) {
         Optional<Post> postOpt = postRepository.findById(postId);
         if(postOpt.isEmpty()) {
             log.debug("Could not find post with id = {}", postId);
@@ -330,20 +328,24 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("created_at").descending());
         Page<PostComment> postCommentPage = PageUtils.createPageImpl(sortedComments, pageable);
+        if(postCommentPage.isEmpty()) {
+            return DataResult.failure(PostErrorCode.NO_MORE_CONTENT_ON_PAGE,
+                    "There are no comments on page=%d".formatted(page));
+        }
 
         Page<PostCommentResponse> response = postCommentPage.map(PostMapper::fromEntityToResponse);
         return DataResult.success(response);
     }
 
-    public DataResult<PostResponse, PostErrorCode> updatePost(Long postId, PostRequest request, List<MultipartFile> images) {
+    public DataResult<PostResponse> updatePost(Long postId, PostRequest request, List<MultipartFile> images) {
         Optional<Post> postOpt = postRepository.findById(postId);
         if(postOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.POST_NOT_FOUND,
                     "Could not find post with id = %d".formatted(postId));
         }
-        PostValidateResult validateResult = postValidator.validate(request);
-        if(!validateResult.isValid()) {
-            return DataResult.failure(validateResult.code(), validateResult.message());
+        RequestValidateResult validateResult = requestValidator.validate(request);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         Post post = postOpt.get();
@@ -386,21 +388,21 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<PostCommentResponse, PostErrorCode> updatePostComment(Long postCommentId, PostCommentRequest request) {
+    public DataResult<PostCommentResponse> updatePostComment(Long postCommentId, PostCommentRequest request) {
         Optional<PostComment> commentOpt = postCommentRepository.findById(postCommentId);
         if(commentOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.POST_COMMENT_NOT_FOUND,
                     "Post comment with id=%d is not found".formatted(postCommentId));
         }
-        PostValidateResult validateResult = postCommentValidator.validate(request);
-        if(!validateResult.isValid()) {
-            return DataResult.failure(validateResult.code(), validateResult.message());
+        RequestValidateResult validateResult = requestValidator.validate(request);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         PostComment comment = commentOpt.get();
         User commentAuthor = comment.getCommentAuthor();
         Long commentAuthorId = commentAuthor.getId();
-        if(commentAuthorId.equals(request.authorId())) {
+        if(!commentAuthorId.equals(request.authorId())) {
             return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,
                     "User with id=%d is not comment(%d) author".formatted(commentAuthorId, postCommentId));
         }
@@ -411,7 +413,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<String, PostErrorCode> deletePost(Long postId, Long userId) {
+    public DataResult<String> deletePost(Long postId, Long userId) {
         Optional<Post> postOpt = postRepository.findById(postId);
         if(postOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.POST_NOT_FOUND,
@@ -428,7 +430,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success("Post with id = %d has been deleted".formatted(postId));
     }
 
-    public DataResult<String, PostErrorCode> deletePostComment(Long postCommentId, Long userId) {
+    public DataResult<String> deletePostComment(Long postCommentId, Long userId) {
         Optional<PostComment> commentOpt = postCommentRepository.findById(postCommentId);
         if(commentOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.POST_COMMENT_NOT_FOUND,
@@ -440,7 +442,10 @@ public class PostFacade implements Observable<PostUpdateDetails> {
             return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,
                     "User with id=%d is not post(%d) author".formatted(userId, postCommentId));
         }
-        postCommentRepository.delete(commentOpt.get());
+
+        Post post = comment.getPost();
+        post.getComments().remove(comment);
+        postRepository.save(post);
         return DataResult.success("PostComment with id = %d has been deleted".formatted(postCommentId));
     }
 

@@ -11,11 +11,13 @@ import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.api.entity.user.UserProfile;
 import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
 import org.hl.socialspherebackend.api.entity.user.UserProfilePicture;
-import org.hl.socialspherebackend.application.pattern.behavioral.Observable;
-import org.hl.socialspherebackend.application.pattern.behavioral.Observer;
+import org.hl.socialspherebackend.application.common.Observable;
+import org.hl.socialspherebackend.application.common.Observer;
 import org.hl.socialspherebackend.application.util.FileUtils;
 import org.hl.socialspherebackend.application.util.PageUtils;
-import org.hl.socialspherebackend.application.validator.RequestValidator;
+import org.hl.socialspherebackend.application.util.UserUtils;
+import org.hl.socialspherebackend.application.validator.RequestValidateResult;
+import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,18 +43,18 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
 
     private final UserRepository userRepository;
     private final UserProfilePermissionChecker permissionChecker;
-    private final RequestValidator<UserProfileRequest, UserValidateResult> userProfileValidator;
+    private final RequestValidatorChain requestValidator;
     private final Clock clock;
     private final Set<Observer<UserFriendRequestResponse>> observers;
 
     public UserFacade(UserRepository userRepository,
                       UserProfilePermissionChecker permissionChecker,
-                      RequestValidator<UserProfileRequest, UserValidateResult> userProfileValidator,
+                      RequestValidatorChain requestValidator,
                       Clock clock,
                       Set<Observer<UserFriendRequestResponse>> observers) {
         this.userRepository = userRepository;
         this.permissionChecker = permissionChecker;
-        this.userProfileValidator = userProfileValidator;
+        this.requestValidator = requestValidator;
         this.clock = clock;
         this.observers = observers;
     }
@@ -73,7 +75,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         observers.forEach(observer -> observer.update(subject));
     }
 
-    public DataResult<UserFriendRequestResponse, UserErrorCode> sendFriendRequest(UserFriendRequestDto request) {
+    public DataResult<UserFriendRequestResponse> sendFriendRequest(UserFriendRequestDto request) {
         Optional<User> senderOpt = userRepository.findById(request.senderId());
         Optional<User> receiverOpt = userRepository.findById(request.receiverId());
         if(senderOpt.isEmpty()) {
@@ -115,16 +117,16 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<UserFriendRequestResponse, UserErrorCode>  acceptFriendRequest(UserFriendRequestDto request) {
+    public DataResult<UserFriendRequestResponse>  acceptFriendRequest(UserFriendRequestDto request) {
         return responseToFriendRequest(request.senderId(), request.receiverId(), UserFriendRequestStatus.ACCEPTED);
     }
 
 
-    public DataResult<UserFriendRequestResponse, UserErrorCode>  rejectFriendRequest(UserFriendRequestDto request) {
+    public DataResult<UserFriendRequestResponse>  rejectFriendRequest(UserFriendRequestDto request) {
         return responseToFriendRequest(request.senderId(), request.receiverId(), UserFriendRequestStatus.REJECTED);
     }
 
-    private DataResult<UserFriendRequestResponse, UserErrorCode>  responseToFriendRequest(Long senderId,
+    private DataResult<UserFriendRequestResponse>  responseToFriendRequest(Long senderId,
                                                             Long receiverId,
                                                             UserFriendRequestStatus status) {
 
@@ -214,7 +216,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         }
     }
 
-    public DataResult<UserProfileResponse, UserErrorCode> createUserProfile(Long userId, UserProfileRequest request, MultipartFile profilePicture) {
+    public DataResult<UserProfileResponse> createUserProfile(Long userId, UserProfileRequest request, MultipartFile profilePicture) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
@@ -228,9 +230,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
                     "User with id = %d already have profile.");
         }
 
-        UserValidateResult validateResult = userProfileValidator.validate(request);
-        if(!validateResult.isValid()) {
-            return DataResult.failure(validateResult.code(), validateResult.message());
+        RequestValidateResult validateResult = requestValidator.validate(request);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         UserProfile userProfile = UserMapper.fromRequestToEntity(request, user);
@@ -256,7 +258,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
     }
 
 
-    public DataResult<UserProfileConfigResponse, UserErrorCode> createUserProfileConfig(Long userId, UserProfileConfigRequest request) {
+    public DataResult<UserProfileConfigResponse> createUserProfileConfig(Long userId, UserProfileConfigRequest request) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(
@@ -284,7 +286,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
     }
 
 
-    public DataResult<UserWrapperResponse, UserErrorCode> findUserById(Long userId, Long currentUserId) {
+    public DataResult<UserWrapperResponse> findUserById(Long userId, Long currentUserId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
@@ -303,7 +305,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<UserProfileResponse, UserErrorCode> findUserProfileByUserId(Long userId) {
+    public DataResult<UserProfileResponse> findUserProfileByUserId(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(
@@ -325,7 +327,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<UserProfileConfigResponse, UserErrorCode> findUserProfileConfigByUserId(Long userId) {
+    public DataResult<UserProfileConfigResponse> findUserProfileConfigByUserId(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(
@@ -348,7 +350,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<UserFriendListResponse, UserErrorCode> findUserFriends(Long userId) {
+    public DataResult<UserFriendListResponse> findUserFriends(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(
@@ -376,7 +378,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<UserFriendResponse>, UserErrorCode> findUserFriends(Long userId, int page, int size) {
+    public DataResult<Page<UserFriendResponse>> findUserFriends(Long userId, int page, int size) {
         if(!userRepository.existsById(userId)) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
                     "User with id = %d does not exists in database!".formatted(userId));
@@ -394,7 +396,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Page<UserFriendResponse>, UserErrorCode> findCheckedUserFriends(Long currentUserId, Long userToCheckId, int page, int size) {
+    public DataResult<Page<UserFriendResponse>> findCheckedUserFriends(Long currentUserId, Long userToCheckId, int page, int size) {
         Optional<User> currentUserOpt = userRepository.findById(currentUserId);
         Optional<User> userToCheckOpt = userRepository.findById(userToCheckId);
         if(currentUserOpt.isEmpty()) {
@@ -430,7 +432,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Set<UserHeaderResponse>, UserErrorCode> findUsers(Long userId, final String containsString, Integer maxSize) {
+    public DataResult<Set<UserHeaderResponse>> findUsers(Long userId, final String containsString, Integer maxSize) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
@@ -516,7 +518,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return true;
     }
 
-    public DataResult<byte[], UserErrorCode> findUserProfilePictureByUserId(Long userId) {
+    public DataResult<byte[]> findUserProfilePictureByUserId(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
@@ -540,7 +542,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<UserProfileResponse, UserErrorCode> updateUserProfile(Long userId, UserProfileRequest request, MultipartFile profilePicture) {
+    public DataResult<UserProfileResponse> updateUserProfile(Long userId, UserProfileRequest request, MultipartFile profilePicture) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(
@@ -558,9 +560,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
             );
         }
 
-        UserValidateResult validateResult = userProfileValidator.validate(request);
-        if(!validateResult.isValid()) {
-            return DataResult.failure(validateResult.code(), validateResult.message());
+        RequestValidateResult validateResult = requestValidator.validate(request);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         updateUserProfileEntity(userProfile, request, profilePicture);
@@ -596,7 +598,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
 
     }
 
-    public DataResult<UserProfileConfigResponse, UserErrorCode> updateUserProfileConfig(Long userId, UserProfileConfigRequest request) {
+    public DataResult<UserProfileConfigResponse> updateUserProfileConfig(Long userId, UserProfileConfigRequest request) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(
@@ -627,7 +629,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         entity.setUserProfilePrivacyLevel(request.profilePrivacyLevel());
     }
 
-    public DataResult<String, UserErrorCode> removeFromFriendList(Long userId, Long friendId) {
+    public DataResult<String> removeFromFriendList(Long userId, Long friendId) {
         Optional<User> userOpt = userRepository.findById(userId);
         Optional<User> friendOpt = userRepository.findById(friendId);
         if(userOpt.isEmpty()) {

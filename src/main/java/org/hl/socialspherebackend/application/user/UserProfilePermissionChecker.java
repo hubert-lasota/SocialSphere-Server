@@ -4,6 +4,7 @@ import org.hl.socialspherebackend.api.dto.user.response.RelationshipStatus;
 import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
 import org.hl.socialspherebackend.api.entity.user.UserProfilePrivacyLevel;
+import org.hl.socialspherebackend.application.util.UserUtils;
 
 public class UserProfilePermissionChecker {
 

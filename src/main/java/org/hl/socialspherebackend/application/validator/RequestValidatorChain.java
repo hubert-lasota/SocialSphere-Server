@@ -1,22 +1,43 @@
 package org.hl.socialspherebackend.application.validator;
 
-public abstract class RequestValidator<T, R> {
+public abstract class RequestValidatorChain {
+
+    private final RequestValidatorChain next;
 
     private final int DEFAULT_TEXT_MIN_SIZE = 5;
     private final int DEFAULT_TEXT_MAX_SIZE = 50;
     private final boolean DEFAULT_ACCEPT_BLANK_TEXT = false;
     private final boolean DEFAULT_ACCEPT_WHITESPACE = false;
     private final boolean DEFAULT_FORCE_FIRST_CHAR_UPPERCASE = false;
+    private final boolean DEFAULT_NULLABLE = false;
 
     protected int textMinSize = DEFAULT_TEXT_MIN_SIZE;
     protected int textMaxSize = DEFAULT_TEXT_MAX_SIZE;
     protected boolean acceptBlankText = DEFAULT_ACCEPT_BLANK_TEXT;
     protected boolean acceptWhitespace = DEFAULT_ACCEPT_WHITESPACE;
     protected boolean forceFirstCharUppercase = DEFAULT_FORCE_FIRST_CHAR_UPPERCASE;
+    protected boolean nullable = DEFAULT_NULLABLE;
 
-    public RequestValidator() {}
+    public RequestValidatorChain(RequestValidatorChain next) {
+        this.next = next;
+    }
 
-    public abstract R validate(T requestToValidate);
+    public RequestValidateResult validate(Object request) {
+        if(isRequestValidInstance(request)) {
+            return doValidate(request);
+        }
+
+        if(next == null) {
+            throw new RuntimeException("There is no RequestValidator for this request type=%s"
+                    .formatted(request.getClass().toString()));
+        }
+
+        return next.validate(request);
+    }
+
+    protected abstract RequestValidateResult doValidate(Object request);
+
+    protected abstract boolean isRequestValidInstance(Object request);
 
     protected boolean containsWhitespace(String string) {
         for (char c : string.toCharArray()) {

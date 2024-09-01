@@ -8,7 +8,8 @@ import org.hl.socialspherebackend.api.dto.common.DataResult;
 import org.hl.socialspherebackend.api.entity.chat.Chat;
 import org.hl.socialspherebackend.api.entity.chat.ChatMessage;
 import org.hl.socialspherebackend.api.entity.user.User;
-import org.hl.socialspherebackend.application.validator.RequestValidator;
+import org.hl.socialspherebackend.application.validator.RequestValidateResult;
+import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.hl.socialspherebackend.infrastructure.chat.ChatRepository;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.slf4j.Logger;
@@ -28,20 +29,21 @@ public class ChatFacade {
 
     private final ChatRepository chatRepository;
     private final UserRepository userRepository;
-    private final RequestValidator<ChatMessageRequest, ChatValidateResult> chatMessageValidator;
+    private final RequestValidatorChain requestValidator;
     private final Clock clock;
 
-    public ChatFacade(ChatRepository chatRepository, UserRepository userRepository, RequestValidator<ChatMessageRequest, ChatValidateResult> chatMessageValidator, Clock clock) {
+    public ChatFacade(ChatRepository chatRepository, UserRepository userRepository, RequestValidatorChain requestValidator, Clock clock) {
         this.chatRepository = chatRepository;
         this.userRepository = userRepository;
-        this.chatMessageValidator = chatMessageValidator;
+        this.requestValidator = requestValidator;
         this.clock = clock;
     }
 
-    public DataResult<ChatMessageResponse, ChatErrorCode> sendMessage(ChatMessageRequest chatMessageRequest) {
-        ChatValidateResult validateResult = chatMessageValidator.validate(chatMessageRequest);
-        if(!validateResult.isValid()) {
-            return DataResult.failure(validateResult.code(), validateResult.message());
+
+    public DataResult<ChatMessageResponse> sendMessage(ChatMessageRequest chatMessageRequest) {
+        RequestValidateResult validateResult = requestValidator.validate(chatMessageRequest);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         Optional<User> senderOpt = userRepository.findById(chatMessageRequest.senderId());
@@ -95,7 +97,7 @@ public class ChatFacade {
     }
 
 
-    public DataResult<Set<ChatResponse>, ChatErrorCode> findUserChats(Long userId) {
+    public DataResult<Set<ChatResponse>> findUserChats(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(ChatErrorCode.USER_NOT_FOUND,
@@ -120,7 +122,7 @@ public class ChatFacade {
         return DataResult.success(responseSet);
     }
 
-    public DataResult<Set<ChatMessageResponse>, ChatErrorCode> findChatMessages(Long chatId) {
+    public DataResult<Set<ChatMessageResponse>> findChatMessages(Long chatId) {
         Optional<Chat> chatOpt = chatRepository.findById(chatId);
         if(chatOpt.isEmpty()) {
             return DataResult.failure(ChatErrorCode.CHAT_NOT_FOUND,

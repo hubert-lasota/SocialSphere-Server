@@ -36,7 +36,7 @@ public class PostEndpoint {
     @PostMapping
     public ResponseEntity<?> createPost(@RequestPart("request") PostRequest request,
                                                        @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        DataResult<?, ?> result = postFacade.createPost(request, images);
+        DataResult<?> result = postFacade.createPost(request, images);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -45,7 +45,7 @@ public class PostEndpoint {
 
     @PostMapping(value = "/comment")
     public ResponseEntity<?>  createPostComment(@RequestBody PostCommentRequest request) {
-        DataResult<?, ?> result = postFacade.addCommentToPost(request);
+        DataResult<?> result = postFacade.addCommentToPost(request);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -55,7 +55,7 @@ public class PostEndpoint {
 
     @PostMapping(value = "/like/add")
     public ResponseEntity<?> addLikeToPost(@RequestBody PostLikeRequest request) {
-        DataResult<?, ?> result = postFacade.addLikeToPost(request);
+        DataResult<?> result = postFacade.addLikeToPost(request);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -70,7 +70,7 @@ public class PostEndpoint {
             @RequestParam Integer page,
             @RequestParam Integer size
     ) {
-        DataResult<?, ?> result = userToCheckId.equals(-1L) ?
+        DataResult<?> result = userToCheckId.equals(-1L) ?
                 postFacade.findCurrentUserPosts(currentUserId, page, size) :
                 postFacade.findUserPosts(currentUserId, userToCheckId, page, size);
 
@@ -85,7 +85,7 @@ public class PostEndpoint {
             @RequestParam Integer page,
             @RequestParam Integer size
     ) {
-        DataResult<?, ?> result = postFacade.findRecentPostsAvailableForUser(userId, page, size);
+        DataResult<?> result = postFacade.findRecentPostsAvailableForUser(userId, page, size);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -98,7 +98,7 @@ public class PostEndpoint {
             @RequestParam Integer page,
             @RequestParam Integer size
     ) {
-        DataResult<?, ?> result = postFacade.findPostComments(postId, page, size);
+        DataResult<?> result = postFacade.findPostComments(postId, page, size);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -110,7 +110,7 @@ public class PostEndpoint {
     public ResponseEntity<?> updatePost(@PathVariable(value = "id") Long postId,
                                         @RequestPart(value = "request") PostRequest request,
                                         @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        DataResult<?, ?> result = postFacade.updatePost(postId, request, images);
+        DataResult<?> result = postFacade.updatePost(postId, request, images);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -119,7 +119,7 @@ public class PostEndpoint {
 
     @PutMapping(value = "/comment/{id}")
     public ResponseEntity<?> updatePostComment(@PathVariable(value = "id") Long postCommentId, @RequestBody PostCommentRequest request) {
-        DataResult<?, ?> result = postFacade.updatePostComment(postCommentId, request);
+        DataResult<?> result = postFacade.updatePostComment(postCommentId, request);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -129,7 +129,7 @@ public class PostEndpoint {
 
     @DeleteMapping(value = "/like/remove")
     public ResponseEntity<?> removeLikeFromPost(@RequestParam Long postId, @RequestParam Long userId) {
-        DataResult<?, ?> result = postFacade.removeLikeFromPost(postId, userId);
+        DataResult<?> result = postFacade.removeLikeFromPost(postId, userId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -138,7 +138,7 @@ public class PostEndpoint {
 
     @DeleteMapping(value = "/{id}")
     public ResponseEntity<?> deletePost(@PathVariable(value = "id") Long postId, @RequestParam Long userId) {
-        DataResult<?, ?> result = postFacade.deletePost(postId, userId);
+        DataResult<?> result = postFacade.deletePost(postId, userId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -147,7 +147,7 @@ public class PostEndpoint {
 
     @DeleteMapping(value = "/comment/{id}")
     public ResponseEntity<?> deletePostComment(@PathVariable(value = "id") Long postCommentId, @RequestParam Long userId) {
-        DataResult<?, ?> result = postFacade.deletePostComment(postCommentId, userId);
+        DataResult<?> result = postFacade.deletePostComment(postCommentId, userId);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :

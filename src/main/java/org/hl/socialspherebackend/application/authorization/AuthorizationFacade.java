@@ -7,7 +7,8 @@ import org.hl.socialspherebackend.api.dto.authorization.response.LoginResponse;
 import org.hl.socialspherebackend.api.dto.common.DataResult;
 import org.hl.socialspherebackend.api.entity.user.Authority;
 import org.hl.socialspherebackend.api.entity.user.User;
-import org.hl.socialspherebackend.application.validator.RequestValidator;
+import org.hl.socialspherebackend.application.validator.RequestValidateResult;
+import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.hl.socialspherebackend.infrastructure.security.jwt.JwtFacade;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,35 +21,35 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class AuthorizationFacade {
 
     private final UserRepository userRepository;
-    private final RequestValidator<LoginRequest, AuthorizationValidateResult> authorizationValidator;
+    private final RequestValidatorChain requestValidator;
     private final JwtFacade jwtFacade;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
 
 
     public AuthorizationFacade(UserRepository userRepository,
-                               RequestValidator<LoginRequest, AuthorizationValidateResult> authorizationValidator,
+                               RequestValidatorChain requestValidator,
                                JwtFacade jwtFacade,
                                AuthenticationManager authenticationManager,
                                PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.authorizationValidator = authorizationValidator;
+        this.requestValidator = requestValidator;
         this.jwtFacade = jwtFacade;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
     }
 
 
-    public DataResult<LoginResponse, AuthorizationErrorCode> createLogin(LoginRequest request) {
+    public DataResult<LoginResponse> createLogin(LoginRequest request) {
         if(userRepository.existsByUsername(request.username())) {
             return DataResult.failure(AuthorizationErrorCode.USER_ALREADY_EXISTS,
                     "Username: %s exists in database!".formatted(request.username()));
         }
         LoginRequest encodedRequest = new LoginRequest(request.username(), passwordEncoder.encode(request.password()));
 
-        AuthorizationValidateResult validateResult = authorizationValidator.validate(encodedRequest);
-        if(!validateResult.isValid()) {
-            return DataResult.failure(validateResult.code(), validateResult.message());
+        RequestValidateResult validateResult = requestValidator.validate(encodedRequest);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         User user = AuthorizationMapper.fromRequestToEntity(encodedRequest);
@@ -62,7 +63,7 @@ public class AuthorizationFacade {
         return DataResult.success(response);
     }
 
-    public DataResult<LoginResponse, AuthorizationErrorCode> login(LoginRequest request) {
+    public DataResult<LoginResponse> login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password()));
 
@@ -85,7 +86,7 @@ public class AuthorizationFacade {
         return DataResult.success(response);
     }
 
-    public DataResult<LoginResponse, AuthorizationErrorCode> validateUserToken(UserTokenRequest request) {
+    public DataResult<LoginResponse> validateUserToken(UserTokenRequest request) {
         UserDetails userDetails = null;
         try {
             userDetails = userRepository.findByUsername(request.username())
@@ -104,7 +105,7 @@ public class AuthorizationFacade {
         }
     }
 
-    public DataResult<LoginResponse, AuthorizationErrorCode> refreshUserToken(UserTokenRequest request) {
+    public DataResult<LoginResponse> refreshUserToken(UserTokenRequest request) {
         if(validateUserToken(request).isFailure()) {
             return DataResult.failure(AuthorizationErrorCode.NOT_VALID_USER_TOKEN, "UserToken is invalid");
         }

@@ -3,33 +3,33 @@ package org.hl.socialspherebackend.api.dto.common;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class DataResult<T, E> {
+public class DataResult<T> {
 
-    @JsonProperty
+    @JsonProperty(value = "data", index = 0)
     private final T data;
 
-    @JsonProperty
-    private final E errorCode;
+    @JsonProperty(value = "errorCode", index = 2)
+    private final Enum<?> errorCode;
 
-    @JsonProperty
+    @JsonProperty(value = "errorMessage", index = 3)
     private final String errorMessage;
 
-    private DataResult(T data, E errorCode, String errorMessage) {
+    private DataResult(T data, Enum<?> errorCode, String errorMessage) {
         this.data = data;
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
     }
 
 
-    public static <T, E> DataResult<T, E> success(T data) {
+    public static <T> DataResult<T> success(T data) {
         return new DataResult<>(data, null, null);
     }
 
-    public static <T, E> DataResult<T, E> failure(E errorCode, String errorMessage) {
+    public static <Void> DataResult<Void> failure(Enum<?> errorCode, String errorMessage) {
         return new DataResult<>(null, errorCode, errorMessage);
     }
 
-    @JsonProperty
+    @JsonProperty(value = "success", index = 1)
     public boolean isSuccess() {
         return data != null;
     }
@@ -45,7 +45,7 @@ public class DataResult<T, E> {
     }
 
     @JsonIgnore
-    public E getErrorCode() {
+    public Enum<?> getErrorCode() {
         return errorCode;
     }
 
