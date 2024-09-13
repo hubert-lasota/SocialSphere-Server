@@ -8,4 +8,5 @@ public enum ChatErrorCode {
     USER_NOT_FOUND,
     USER_HAS_NO_CHATS,
     SERVER_ERROR,
+    NO_NEW_MESSAGE
 }

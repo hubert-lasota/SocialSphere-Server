@@ -64,12 +64,12 @@ public class PostEndpoint {
 
 
     @GetMapping
-    public ResponseEntity<?> findUserPosts(
-            @RequestParam(required = false, defaultValue = "-1") Long userId,
+    public ResponseEntity<?> findPosts(
+            @RequestParam(required = false) Long userId,
             @RequestParam Integer page,
             @RequestParam Integer size
     ) {
-        DataResult<?> result = userId.equals(-1L) ?
+        DataResult<?> result = userId == null ?
                 postFacade.findCurrentUserPosts(page, size) :
                 postFacade.findUserPosts(userId, page, size);
 
@@ -79,7 +79,7 @@ public class PostEndpoint {
     }
     
     @GetMapping("/recent")
-    public ResponseEntity<?> findRecentPostsAvailableForUser(
+    public ResponseEntity<?> findRecentPostsAvailableForCurrentUser(
             @RequestParam Integer page,
             @RequestParam Integer size
     ) {

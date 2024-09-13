@@ -23,7 +23,8 @@ public class UserMapper {
         return new UserResponse(
                 user.getId(),
                 user.getUsername(),
-                status
+                status,
+                user.isOnline()
         );
     }
 

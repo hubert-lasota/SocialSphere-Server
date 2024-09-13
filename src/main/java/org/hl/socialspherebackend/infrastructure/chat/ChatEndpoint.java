@@ -37,4 +37,12 @@ public class ChatEndpoint {
                 ResponseEntity.notFound().build();
     }
 
+    @GetMapping(value = "/message/new")
+    public ResponseEntity<?> findChatIdsWithNewMessage() {
+        DataResult<?> result = chatFacade.findChatsIdWithNewMessage();
+
+        return result.isSuccess() ?
+                ResponseEntity.ok(result) :
+                ResponseEntity.badRequest().build();
+    }
 }

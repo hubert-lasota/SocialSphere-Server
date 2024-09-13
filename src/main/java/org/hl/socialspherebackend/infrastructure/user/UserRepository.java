@@ -13,7 +13,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByUsername(String username);
 
-    @Query(value = "select id, username, password from dbo.users where username = :username", nativeQuery = true)
+    @Query(value = "select * from dbo.users where username = :username", nativeQuery = true)
     Optional<User> findByUsername(String username);
 
     @Query(value = """
@@ -42,5 +42,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
            where inverse_friend_id = :userId)
         """, nativeQuery = true)
     List<User> findUserFriends(Long userId);
+
+
+    @Query(value = """
+        select u.*
+        from users u
+        join chat_room chr
+        on chr.user_id = u.id
+        where chr.chat_id = :chatId and chr.user_id <> :firstUserId
+    """, nativeQuery = true)
+    Optional<User> findSecondUserInChat(Long chatId, Long firstUserId);
 
 }

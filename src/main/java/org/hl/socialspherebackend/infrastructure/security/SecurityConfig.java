@@ -1,6 +1,7 @@
 package org.hl.socialspherebackend.infrastructure.security;
 
 import org.hl.socialspherebackend.infrastructure.security.jwt.JwtFilter;
+import org.hl.socialspherebackend.infrastructure.security.jwt.JwtWebSocketHandshakeFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,9 +24,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final JwtWebSocketHandshakeFilter jwtWebSocketHandshakeFilter;
 
-    public SecurityConfig(JwtFilter jwtFilter) {
+    public SecurityConfig(JwtFilter jwtFilter, JwtWebSocketHandshakeFilter jwtWebSocketHandshakeFilter) {
         this.jwtFilter = jwtFilter;
+        this.jwtWebSocketHandshakeFilter = jwtWebSocketHandshakeFilter;
     }
 
 
@@ -36,7 +39,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> {
                     authorize
                             .requestMatchers("/api/v1/auth/**").permitAll()
-                            .requestMatchers("/ws/**").permitAll()
                             .anyRequest().authenticated();
                 })
                 .sessionManagement(session -> {
@@ -44,6 +46,7 @@ public class SecurityConfig {
                             .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
                 })
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtWebSocketHandshakeFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 

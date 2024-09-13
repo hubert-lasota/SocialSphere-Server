@@ -13,10 +13,11 @@ public class ChatConfig {
 
     @Bean
     public ChatFacade chatFacade(ChatRepository chatRepository,
+                                 ChatMessageRepository chatMessageRepository,
                                  UserRepository userRepository,
                                  RequestValidatorChain requestValidatorChain,
                                  Clock clock) {
-        return new ChatFacade(chatRepository, userRepository, requestValidatorChain, clock);
+        return new ChatFacade(chatRepository, chatMessageRepository, userRepository, requestValidatorChain, clock);
     }
 
 }

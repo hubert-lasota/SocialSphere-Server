@@ -11,11 +11,14 @@ import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.application.util.AuthUtils;
 import org.hl.socialspherebackend.application.validator.RequestValidateResult;
 import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
+import org.hl.socialspherebackend.infrastructure.chat.ChatMessageRepository;
 import org.hl.socialspherebackend.infrastructure.chat.ChatRepository;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
+import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -29,36 +32,38 @@ public class ChatFacade {
     private final Logger log = LoggerFactory.getLogger(ChatFacade.class);
 
     private final ChatRepository chatRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
     private final RequestValidatorChain requestValidator;
     private final Clock clock;
 
-    public ChatFacade(ChatRepository chatRepository, UserRepository userRepository, RequestValidatorChain requestValidator, Clock clock) {
+    public ChatFacade(ChatRepository chatRepository, ChatMessageRepository chatMessageRepository, UserRepository userRepository, RequestValidatorChain requestValidator, Clock clock) {
         this.chatRepository = chatRepository;
+        this.chatMessageRepository = chatMessageRepository;
         this.userRepository = userRepository;
         this.requestValidator = requestValidator;
         this.clock = clock;
     }
 
 
-    public DataResult<ChatMessageResponse> sendMessage(ChatMessageRequest chatMessageRequest) {
+    public DataResult<ChatMessageResponse> sendMessage(ChatMessageRequest chatMessageRequest, Principal principal) {
         RequestValidateResult validateResult = requestValidator.validate(chatMessageRequest);
         if(!validateResult.valid()) {
             return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
-        Optional<User> senderOpt = userRepository.findById(chatMessageRequest.senderId());
-        Optional<User> receiverOpt = userRepository.findById(chatMessageRequest.receiverId());
-        if(senderOpt.isEmpty()) {
+        User sender = getUserFromPrincipal(principal);
+        if(sender == null) {
             return DataResult.failure(ChatErrorCode.SENDER_NOT_FOUND,
-                    "sender with id %d not found".formatted(chatMessageRequest.senderId()));
+                    "Could not find sender in security context");
         }
+
+        Optional<User> receiverOpt = userRepository.findById(chatMessageRequest.receiverId());
         if(receiverOpt.isEmpty()) {
             return DataResult.failure(ChatErrorCode.RECEIVER_NOT_FOUND,
                     "receiver with id %d not found".formatted(chatMessageRequest.receiverId()));
         }
 
-        User sender = senderOpt.get();
         User receiver = receiverOpt.get();
 
         List<Chat> senderChats = chatRepository.findChatsByUserId(sender.getId());
@@ -73,7 +78,8 @@ public class ChatFacade {
             chat = new Chat(now);
         } else if (usersChat.size() > 1) {
             return DataResult.failure(ChatErrorCode.SERVER_ERROR,
-                    "Error occurred in database. Sender %s and receiver %s have more than one chat".formatted(chatMessageRequest.senderId(), chatMessageRequest.receiverId()));
+                    "Error occurred in database. Sender and receiver(id=%d) have more than one chat"
+                            .formatted(chatMessageRequest.receiverId()));
         } else {
             chat = usersChat.get(0);
         }
@@ -94,32 +100,28 @@ public class ChatFacade {
 
         return users.stream()
                 .allMatch(u -> u.equals(sender) || u.equals(receiver));
-
     }
 
 
     public DataResult<Set<ChatResponse>> findCurrentUserChats() {
-        Optional<User> userOpt = AuthUtils.getCurrentUser();
-        if(userOpt.isEmpty()) {
-            return DataResult.failure(ChatErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        DataResult<List<Chat>> result = findCurrentUserChatEntities();
+        if(result.isFailure()) {
+            return DataResult.failure(result.getErrorCode(), result.getErrorMessage());
         }
-        User user = userOpt.get();
-        List<Chat> chats = chatRepository.findChatsByUserId(user.getId());
-        if(chats.isEmpty()) {
-            return DataResult.failure(ChatErrorCode.USER_HAS_NO_CHATS,"Current user has no chats!");
-        }
-
+        List<Chat> chats = result.getData();
+        User user = AuthUtils.getCurrentUser().orElseThrow();
 
         Set<ChatResponse> responseSet = chats.stream()
                 .map(ch -> {
-                    User anotherUserInChat = chatRepository.findSecondUserInChat(ch.getId(), user.getId());
-                    ChatMessage lastMessage = chatRepository.findLastChatMessageByChatId(ch.getId()).get();
+                    User anotherUserInChat = userRepository.findSecondUserInChat(ch.getId(), user.getId()).get();
+                    ChatMessage lastMessage = chatMessageRepository.findLastChatMessageByChatId(ch.getId()).get();
                     return ChatMapper.fromEntitiesToResponse(ch, lastMessage, anotherUserInChat);
                 })
                 .collect(toSet());
 
         return DataResult.success(responseSet);
     }
+
 
     public DataResult<Set<ChatMessageResponse>> findChatMessages(Long chatId) {
         Optional<Chat> chatOpt = chatRepository.findById(chatId);
@@ -142,4 +144,36 @@ public class ChatFacade {
         return DataResult.success(response);
     }
 
+    public DataResult<List<Long>> findChatsIdWithNewMessage() {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
+        if(userOpt.isEmpty()) {
+            return DataResult.failure(ChatErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+
+       List<Long> chatIds = chatRepository.findChatsIdWithNewMessage(userOpt.get().getId());
+        if(chatIds.isEmpty()) {
+            return DataResult.failure(ChatErrorCode.NO_NEW_MESSAGE, "Current user has no new messages!");
+        }
+        return DataResult.success(chatIds);
+    }
+
+    private DataResult<List<Chat>> findCurrentUserChatEntities() {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
+        if(userOpt.isEmpty()) {
+            return DataResult.failure(ChatErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+        User user = userOpt.get();
+        List<Chat> chats = chatRepository.findChatsByUserId(user.getId());
+        if(chats.isEmpty()) {
+            return DataResult.failure(ChatErrorCode.USER_HAS_NO_CHATS,"Current user has no chats!");
+        }
+        return DataResult.success(chats);
+    }
+
+    private User getUserFromPrincipal(Principal principal) {
+        if(principal == null) return null;
+
+        UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) principal;
+        return (User) auth.getPrincipal();
+    }
 }

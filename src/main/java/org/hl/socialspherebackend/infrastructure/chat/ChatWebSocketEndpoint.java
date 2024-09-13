@@ -8,6 +8,8 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import java.security.Principal;
+
 @Controller
 public class ChatWebSocketEndpoint {
 
@@ -20,9 +22,9 @@ public class ChatWebSocketEndpoint {
     }
 
 
-    @MessageMapping("/chat")
-    public void sendMessageToUser(@Payload ChatMessageRequest request) {
-        DataResult<?> result = chatFacade.sendMessage(request);
+    @MessageMapping("/chat/message")
+    public void sendMessageToUser(@Payload ChatMessageRequest request, Principal principal) {
+        DataResult<?> result = chatFacade.sendMessage(request, principal);
         if(result.isFailure()) {
             return;
         }

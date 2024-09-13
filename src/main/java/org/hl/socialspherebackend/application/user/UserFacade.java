@@ -253,6 +253,23 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
+    public DataResult<UserHeaderResponse> findCurrentUserHeader() {
+        DataResult<UserWrapperResponse> result = findCurrentUser();
+        if(result.isFailure()) {
+            return DataResult.failure(result.getErrorCode(), result.getErrorMessage());
+        }
+
+        UserWrapperResponse data = result.getData();
+        UserHeaderResponse response = new UserHeaderResponse(
+                data.user().id(),
+                data.userProfile().firstName(),
+                data.userProfile().lastName(),
+                data.userProfile().profilePicture(),
+                data.user().relationshipStatus()
+        );
+        return DataResult.success(response);
+    }
+
     public DataResult<UserWrapperResponse> findUserById(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
@@ -419,7 +436,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Set<UserHeaderResponse>> findUsers(final String containsString, Integer maxSize) {
+    public DataResult<Set<UserHeaderResponse>> findUsers(final String containsString, Integer size) {
         Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         if(currentUserOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
@@ -449,21 +466,21 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
                 .filter(u -> matchFirstName(pattern, u))
                 .toList();
 
-        List<User> userEntitiesResponse = new ArrayList<>(maxSize);
+        List<User> userEntitiesResponse = new ArrayList<>(size);
 
         if(!userEntitiesThatContainsFirstNameString.isEmpty()) {
-            for(int i = 0; i < maxSize && i < userEntitiesThatContainsFirstNameString.size(); i++) {
+            for(int i = 0; i < size && i < userEntitiesThatContainsFirstNameString.size(); i++) {
                 userEntitiesResponse.add(userEntitiesThatContainsFirstNameString.get(i));
             }
         }
 
-        if(userEntitiesResponse.size() < maxSize) {
+        if(userEntitiesResponse.size() < size) {
             List<User> userEntitiesThatContainsLastNameString = userEntitiesWithProfiles.stream()
                     .filter(u -> checkUserInList(userEntitiesThatContainsFirstNameString, u))
                     .filter(u -> matchLastName(pattern, u))
                     .toList();
 
-            for(int i = userEntitiesResponse.size(); i < maxSize && i < userEntitiesThatContainsLastNameString.size(); i++) {
+            for(int i = userEntitiesResponse.size(); i < size && i < userEntitiesThatContainsLastNameString.size(); i++) {
                 userEntitiesResponse.add(userEntitiesThatContainsLastNameString.get(i));
             }
         }

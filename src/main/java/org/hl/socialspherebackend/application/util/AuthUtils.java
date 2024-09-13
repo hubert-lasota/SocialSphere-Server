@@ -18,11 +18,16 @@ public class AuthUtils {
         try {
             User user = (User) authentication.getPrincipal();
             return Optional.of(user);
-        }
-        catch (ClassCastException e) {
+        } catch (NullPointerException e) {
+            log.debug("Error occurred while getting authentication object from SecurityContextHolder. Error message: {}"
+                    , e.getMessage());
+            return Optional.empty();
+
+        } catch (ClassCastException e) {
             log.debug("Error occurred casting principal to User. Error message: {}", e.getMessage());
             return Optional.empty();
         }
+
     }
 
 }

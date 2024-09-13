@@ -24,9 +24,9 @@ public class Chat {
     @OneToMany(mappedBy = "chat", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private Set<ChatMessage> chatMessages = new HashSet<>();
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-            name = "chat_room",
+            name = "chat_bound_users",
             joinColumns = @JoinColumn(name = "chat_id", nullable = false, referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
     )

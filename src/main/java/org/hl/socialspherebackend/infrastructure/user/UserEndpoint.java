@@ -80,8 +80,10 @@ public class UserEndpoint {
 
 
     @GetMapping
-    public ResponseEntity<?> findCurrentUser() {
-        DataResult<?> result = userFacade.findCurrentUser();
+    public ResponseEntity<?> findCurrentUser(
+            @RequestParam(value = "header", required = false, defaultValue = "false") boolean headerResponse
+    ) {
+        DataResult<?> result = headerResponse ? userFacade.findCurrentUserHeader() : userFacade.findCurrentUser();
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :
@@ -113,7 +115,7 @@ public class UserEndpoint {
     }
 
     @GetMapping("/profile/picture")
-    public ResponseEntity<?> findProfilePicture() {
+    public ResponseEntity<?> findCurrentUserProfilePicture() {
         DataResult<?> result = userFacade.findCurrentUserProfilePicture();
 
         return result.isSuccess() ?
@@ -157,9 +159,9 @@ public class UserEndpoint {
     @GetMapping("/search")
     public ResponseEntity<?> searchFriends(
             @RequestParam String containsString,
-            @RequestParam Integer maxSize
+            @RequestParam Integer size
     ) {
-        DataResult<?> result = userFacade.findUsers(containsString, maxSize);
+        DataResult<?> result = userFacade.findUsers(containsString, size);
 
         return result.isSuccess() ?
                 ResponseEntity.ok(result) :

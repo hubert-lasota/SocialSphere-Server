@@ -24,6 +24,9 @@ public class User implements UserDetails {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @Column(name = "online", nullable = false)
+    private boolean online;
+
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private UserProfile userProfile;
 
@@ -33,10 +36,10 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Authority> authorities = new HashSet<>();
 
-    @OneToMany(mappedBy = "sender", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "sender", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> sentFriendRequests = new HashSet<>();
 
-    @OneToMany(mappedBy = "receiver", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "receiver", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> receivedFriendRequests = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.EAGER)
@@ -58,12 +61,14 @@ public class User implements UserDetails {
     public User(String username, String password) {
         this.username = username;
         this.password = password;
+        online = false;
     }
 
     public User(String username, String password, Authority... authorities) {
         this.username = username;
         this.password = password;
         this.authorities.addAll(Set.of(authorities));
+        online = false;
     }
 
 
@@ -77,14 +82,6 @@ public class User implements UserDetails {
 
     public void appendAuthority(Authority authority) {
         authorities.add(authority);
-    }
-
-    public void removeSentFriendRequest(UserFriendRequest friendRequest) {
-        this.sentFriendRequests.remove(friendRequest);
-    }
-
-    public void removeReceivedFriendRequest(UserFriendRequest friendRequest) {
-        this.receivedFriendRequests.remove(friendRequest);
     }
 
     public void appendFriend(User friend) {
@@ -172,6 +169,14 @@ public class User implements UserDetails {
         return inverseFriends;
     }
 
+    public boolean isOnline() {
+        return online;
+    }
+
+    public void setOnline(boolean online) {
+        this.online = online;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -191,6 +196,7 @@ public class User implements UserDetails {
                 "id=" + id +
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
+                ", online=" + online +
                 '}';
     }
 

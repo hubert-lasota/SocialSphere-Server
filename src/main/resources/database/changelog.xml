@@ -67,7 +67,7 @@
     </changeSet>
 
     <changeSet id="15" author="hlasota">
-        <sqlFile path="schemas/chat/create-chat_room.sql" relativeToChangelogFile="true" />
+        <sqlFile path="schemas/chat/create-chat_bound_users.sql" relativeToChangelogFile="true" />
     </changeSet>
 
 </databaseChangeLog>

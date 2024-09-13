@@ -67,7 +67,7 @@ public class AuthorizationFacade {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password()));
 
-        UserDetails userDetails = null;
+        User userDetails = null;
         if (authentication.isAuthenticated()) {
             try {
                 userDetails = userRepository.findByUsername(request.username())
@@ -82,7 +82,10 @@ public class AuthorizationFacade {
         }
 
         String jwt = jwtFacade.generateToken(userDetails);
-        LoginResponse response = AuthorizationMapper.fromEntityToResponse((User) userDetails, jwt);
+        userDetails.setOnline(true);
+        userRepository.save(userDetails);
+
+        LoginResponse response = AuthorizationMapper.fromEntityToResponse(userDetails, jwt);
         return DataResult.success(response);
     }
 

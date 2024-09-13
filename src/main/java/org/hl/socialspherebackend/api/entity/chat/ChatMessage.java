@@ -27,6 +27,9 @@ public class ChatMessage {
     @JoinColumn(name = "sender_id", nullable = false, referencedColumnName = "id")
     private User sender;
 
+    @Column(name = "seen", nullable = false)
+    private boolean seen;
+
     protected ChatMessage() {
 
     }
@@ -36,6 +39,7 @@ public class ChatMessage {
         this.createdAt = createdAt;
         this.chat = chat;
         this.sender = sender;
+        seen = false;
     }
 
 
@@ -75,10 +79,6 @@ public class ChatMessage {
         return sender;
     }
 
-    public void setSender(User sender) {
-        this.sender = sender;
-    }
-
     @Override
     public String toString() {
         return "ChatMessage{" +
@@ -87,6 +87,7 @@ public class ChatMessage {
                 ", createdAt=" + createdAt +
                 ", chat=" + chat +
                 ", sender=" + sender +
+                ", seen=" + seen +
                 '}';
     }
 

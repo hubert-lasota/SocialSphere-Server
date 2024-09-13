@@ -2,7 +2,7 @@ package org.hl.socialspherebackend.application.chat;
 
 import org.hl.socialspherebackend.api.dto.chat.response.ChatMessageResponse;
 import org.hl.socialspherebackend.api.dto.chat.response.ChatResponse;
-import org.hl.socialspherebackend.api.dto.user.response.UserWrapperResponse;
+import org.hl.socialspherebackend.api.dto.user.response.UserHeaderResponse;
 import org.hl.socialspherebackend.api.entity.chat.Chat;
 import org.hl.socialspherebackend.api.entity.chat.ChatMessage;
 import org.hl.socialspherebackend.api.entity.user.User;
@@ -18,12 +18,12 @@ class ChatMapper {
         Chat chat = chatMessage.getChat();
         Long chatId = chat.getId();
         User user = chatMessage.getSender();
-        UserWrapperResponse sender = UserMapper.fromEntityToUserWrapperResponse(user);
+        UserHeaderResponse sender = UserMapper.fromEntityToUserHeaderResponse(user, null);
         Long messageId = chatMessage.getId();
         String content = chatMessage.getContent();
         Instant sentAt = chatMessage.getCreatedAt();
 
-        return new ChatMessageResponse(chatId, sender, messageId, content, sentAt);
+        return new ChatMessageResponse(messageId, chatId, sender, content, sentAt);
     }
 
     static ChatResponse fromEntitiesToResponse(Chat chat, ChatMessage lastMessage, User user) {
@@ -34,7 +34,7 @@ class ChatMapper {
 
         Long chatId = chat.getId();
         Instant createdAt = chat.getCreatedAt();
-        UserWrapperResponse userResponse = UserMapper.fromEntityToUserWrapperResponse(user);
+        UserHeaderResponse userResponse = UserMapper.fromEntityToUserHeaderResponse(user, null);
         return new ChatResponse(chatId, createdAt, messageResponse, userResponse);
     }
 }
