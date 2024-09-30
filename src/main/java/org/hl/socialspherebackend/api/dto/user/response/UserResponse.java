@@ -1,4 +1,12 @@
 package org.hl.socialspherebackend.api.dto.user.response;
 
-public record UserResponse(Long id, String username, RelationshipStatus relationshipStatus, boolean online) {
+import java.time.Instant;
+
+public record UserResponse(Long id,
+                           String username,
+                           RelationshipStatus relationshipStatus,
+                           boolean online,
+                           Instant createdAt,
+                           Instant updatedAt,
+                           Instant lastOnlineAt) {
 }

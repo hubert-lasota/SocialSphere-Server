@@ -3,11 +3,7 @@ package org.hl.socialspherebackend.application.user;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.api.dto.user.response.*;
-import org.hl.socialspherebackend.api.entity.chat.UserFriendRequest;
-import org.hl.socialspherebackend.api.entity.user.User;
-import org.hl.socialspherebackend.api.entity.user.UserProfile;
-import org.hl.socialspherebackend.api.entity.user.UserProfileConfig;
-import org.hl.socialspherebackend.api.entity.user.UserProfilePicture;
+import org.hl.socialspherebackend.api.entity.user.*;
 import org.hl.socialspherebackend.application.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +20,10 @@ public class UserMapper {
                 user.getId(),
                 user.getUsername(),
                 status,
-                user.isOnline()
+                user.isOnline(),
+                user.getCreatedAt(),
+                user.getUpdatedAt(),
+                user.getLastOnlineAt()
         );
     }
 
@@ -45,19 +44,14 @@ public class UserMapper {
     }
 
     public static UserFriendRequestResponse fromEntityToResponse(UserFriendRequest userFriendRequest) {
+        UserHeaderResponse sender = fromEntityToUserHeaderResponse(userFriendRequest.getSender(), RelationshipStatus.FRIEND);
         return new UserFriendRequestResponse(
-                userFriendRequest.getSender().getId(),
-                userFriendRequest.getSender().getId(),
-                userFriendRequest.getStatus()
+                userFriendRequest.getId(),
+                sender,
+                userFriendRequest.getReceiver().getId(),
+                userFriendRequest.getStatus(),
+                userFriendRequest.getSentAt()
         );
-    }
-
-    public static UserWrapperResponse fromEntityToUserWrapperResponse(User user) {
-        UserResponse userResponse = UserMapper.fromEntityToResponse(user, null);
-        UserProfileResponse userProfileResponse = UserMapper.fromEntityToResponse(user.getUserProfile());
-        UserProfileConfigResponse userProfileConfigResponse = UserMapper.fromEntityToResponse(user.getUserProfileConfig());
-
-        return new UserWrapperResponse(userResponse, userProfileResponse, userProfileConfigResponse);
     }
 
     public static UserWrapperResponse fromEntityToUserWrapperResponse(User user, RelationshipStatus status) {
@@ -79,14 +73,6 @@ public class UserMapper {
 
         return new UserHeaderResponse(entity.getId(), firstName, lastName, profilePicture, status);
     }
-
-    public static UserFriendResponse fromEntityToUserFriendResponse(User entity, RelationshipStatus status) {
-        UserResponse userResponse = UserMapper.fromEntityToResponse(entity, status);
-        UserProfileResponse userProfile = UserMapper.fromEntityToResponse(entity.getUserProfile());
-        UserProfileConfigResponse userProfileConfig = UserMapper.fromEntityToResponse(entity.getUserProfileConfig());
-        return new UserFriendResponse(userResponse, userProfile, userProfileConfig);
-    }
-
 
     public static UserProfile fromRequestToEntity(UserProfileRequest userProfileRequest, User user) {
         return new UserProfile(

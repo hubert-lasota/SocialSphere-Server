@@ -1,8 +1,8 @@
-package org.hl.socialspherebackend.api.entity.chat;
+package org.hl.socialspherebackend.api.entity.user;
 
 import jakarta.persistence.*;
-import org.hl.socialspherebackend.api.entity.user.User;
 
+import java.time.Instant;
 import java.util.Objects;
 
 @Entity
@@ -25,15 +25,21 @@ public class UserFriendRequest {
     @Column(name = "status", nullable = false)
     private UserFriendRequestStatus status;
 
+    @Column(name = "sent_at", nullable = false)
+    private Instant sentAt;
+
+    @Column(name = "reply_at")
+    private Instant replyAt;
 
     protected UserFriendRequest() {
 
     }
 
-    public UserFriendRequest(User sender, User receiver, UserFriendRequestStatus status) {
+    public UserFriendRequest(User sender, User receiver, UserFriendRequestStatus status, Instant sentAt) {
         this.sender = sender;
         this.receiver = receiver;
         this.status = status;
+        this.sentAt = sentAt;
     }
 
     public Long getId() {
@@ -62,6 +68,18 @@ public class UserFriendRequest {
 
     public void setStatus(UserFriendRequestStatus status) {
         this.status = status;
+    }
+
+    public Instant getSentAt() {
+        return sentAt;
+    }
+
+    public Instant getReplyAt() {
+        return replyAt;
+    }
+
+    public void setReplyAt(Instant replyAt) {
+        this.replyAt = replyAt;
     }
 
     @Override

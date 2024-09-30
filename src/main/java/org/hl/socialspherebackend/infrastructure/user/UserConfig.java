@@ -19,16 +19,17 @@ public class UserConfig {
 
     @Bean
     public UserFacade userFacade(UserRepository userRepository,
+                                 UserFriendRequestRepository userFriendRequestRepository,
                                  RequestValidatorChain requestValidatorChain,
                                  UserProfilePermissionChecker profilePermissionChecker,
                                  Clock clock,
                                  Set<Observer<UserFriendRequestResponse>> observers) {
-        return new UserFacade(userRepository, profilePermissionChecker, requestValidatorChain, clock, observers);
+        return new UserFacade(userRepository, userFriendRequestRepository, profilePermissionChecker, requestValidatorChain, clock, observers);
     }
 
     @Bean
-    public UserProfilePermissionChecker userProfilePermissionChecker() {
-        return new UserProfilePermissionChecker();
+    public UserProfilePermissionChecker userProfilePermissionChecker(UserRepository userRepository) {
+        return new UserProfilePermissionChecker(userRepository);
     }
 
     @Bean

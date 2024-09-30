@@ -1,10 +1,10 @@
 package org.hl.socialspherebackend.api.entity.user;
 
 import jakarta.persistence.*;
-import org.hl.socialspherebackend.api.entity.chat.UserFriendRequest;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
@@ -27,10 +27,19 @@ public class User implements UserDetails {
     @Column(name = "online", nullable = false)
     private boolean online;
 
-    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Column(name ="created_at", nullable = false, columnDefinition = "datetime2")
+    private Instant createdAt;
+
+    @Column(name ="updated_at", nullable = false, columnDefinition = "datetime2")
+    private Instant updatedAt;
+
+    @Column(name ="last_online_at", columnDefinition = "datetime2")
+    private Instant lastOnlineAt;
+
+    @OneToOne(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private UserProfile userProfile;
 
-    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private UserProfileConfig userProfileConfig;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
@@ -42,7 +51,7 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "receiver", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserFriendRequest> receivedFriendRequests = new HashSet<>();
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_friend_list",
             joinColumns = @JoinColumn(name = "friend_id"),
@@ -50,7 +59,7 @@ public class User implements UserDetails {
     )
     private Set<User> friends = new HashSet<>();
 
-    @ManyToMany(mappedBy = "friends", fetch = FetchType.EAGER)
+    @ManyToMany(mappedBy = "friends", fetch = FetchType.LAZY)
     private Set<User> inverseFriends = new HashSet<>();
 
 
@@ -58,17 +67,20 @@ public class User implements UserDetails {
 
     }
 
-    public User(String username, String password) {
-        this.username = username;
-        this.password = password;
-        online = false;
+    public User(String username, String password, Instant createdAt) {
+        this(username, password, createdAt, null);
     }
 
-    public User(String username, String password, Authority... authorities) {
+    public User(String username, String password, Instant createdAt, Authority... authorities) {
         this.username = username;
         this.password = password;
-        this.authorities.addAll(Set.of(authorities));
+        this.createdAt = createdAt;
+        this.updatedAt = createdAt;
         online = false;
+        if(authorities != null) {
+            this.authorities.addAll(Set.of(authorities));
+        }
+
     }
 
 
@@ -87,11 +99,6 @@ public class User implements UserDetails {
     public void appendFriend(User friend) {
         this.friends.add(friend);
         friend.getInverseFriends().add(this);
-    }
-
-    public void removeFriend(User friend) {
-        this.friends.remove(friend);
-        friend.getInverseFriends().remove(this);
     }
 
     @Override
@@ -161,6 +168,14 @@ public class User implements UserDetails {
         this.userProfileConfig = userProfileConfig;
     }
 
+    public void setFriends(Set<User> friends) {
+        this.friends = friends;
+    }
+
+    public void setInverseFriends(Set<User> inverseFriends) {
+        this.inverseFriends = inverseFriends;
+    }
+
     public Set<User> getFriends() {
         return friends;
     }
@@ -175,6 +190,26 @@ public class User implements UserDetails {
 
     public void setOnline(boolean online) {
         this.online = online;
+    }
+
+    public void setLastOnlineAt(Instant lastOnlineAt) {
+        this.lastOnlineAt = lastOnlineAt;
+    }
+
+    public Instant getLastOnlineAt() {
+        return lastOnlineAt;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     @Override
@@ -197,7 +232,9 @@ public class User implements UserDetails {
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
                 ", online=" + online +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", lastOnlineAt=" + lastOnlineAt +
                 '}';
     }
-
 }

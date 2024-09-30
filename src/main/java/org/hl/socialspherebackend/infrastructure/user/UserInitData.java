@@ -11,6 +11,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -41,16 +42,18 @@ public class UserInitData implements InitializingBean {
 
     private void createUsers() {
         Faker faker = new Faker();
-        User user1 = new User("user", passwordEncoder.encode("test"));
+        Instant now = Instant.now();
+        User user1 = new User("user", passwordEncoder.encode("test"), now);
         user1.appendAuthority(new Authority(user1, "USER"));
-        User user2 = new User("user2", passwordEncoder.encode("test"));
+        User user2 = new User("user2", passwordEncoder.encode("test"), now);
         user1.appendAuthority(new Authority(user1, "USER"));
         userRepository.save(user1);
         userRepository.save(user2);
         for (int i = 0; i < 48; i++) {
             String username = faker.name().username();
             String password = passwordEncoder.encode(faker.internet().password());
-            User user = new User(username, password);
+            Instant now2 = Instant.now();
+            User user = new User(username, password, now2);
             user.appendAuthority(new Authority(user, "USER"));
             userRepository.save(user);
         }

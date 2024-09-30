@@ -2,11 +2,14 @@ package org.hl.socialspherebackend.infrastructure.user;
 
 import org.hl.socialspherebackend.api.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -17,40 +20,78 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
 
     @Query(value = """
-        select u.*, up.*
-        from dbo.users u
-        left join dbo.user_profile up
-        on u.id = up.user_id
-
-    """, nativeQuery = true)
-    List<User> findUserHeaders();
-
-    @Query(value = """
-           select u.*, up.*, upc.*
+           select u.*
            from users u
-           left join user_profile up
-           on u.id = up.user_id
-           left join user_profile_config upc
-           on u.id = upc.user_id
            where u.id IN
-           (select inverse_friend_id as friend_id
-           from user_friend_list
-           where friend_id = :userId
-           union
-           select friend_id as friend_id
-           from user_friend_list
-           where inverse_friend_id = :userId)
+               (select inverse_friend_id as friend_id
+               from user_friend_list
+               where friend_id = :userId
+               union
+               select friend_id as friend_id
+               from user_friend_list
+               where inverse_friend_id = :userId)
         """, nativeQuery = true)
     List<User> findUserFriends(Long userId);
 
-
     @Query(value = """
-        select u.*
-        from users u
-        join chat_room chr
-        on chr.user_id = u.id
-        where chr.chat_id = :chatId and chr.user_id <> :firstUserId
+           select u.*
+           from users u
+           where u.id in
+           (select *
+		   from (
+			   select inverse_friend_id as friend_id
+			   from user_friend_list
+			   where friend_id = 1
+			   union
+			   select friend_id as friend_id
+			   from user_friend_list
+			   where inverse_friend_id = 1
+		   ) friends
+		   where friends.friend_id not in (
+            select chbu.user_id from chat_bound_users chbu
+            where chbu.user_id <> 1
+            and
+            chbu.chat_id in (
+            select chbu.chat_id from chat_bound_users chbu
+            where chbu.user_id = 1
+				)
+		   )
+		   )
+        """, nativeQuery = true)
+    List<User> findUserFriendsWithNoSharedChat(Long userId);
+
+	@Query(value = """
+        select u.* from users u
+        join post_liked_by pl
+        on u.id = pl.user_id
+        where pl.post_id = :postId
     """, nativeQuery = true)
-    Optional<User> findSecondUserInChat(Long chatId, Long firstUserId);
+	List<User> findUsersLikedPost(Long postId);
+	@Query(value = """
+		select u.* 
+		from users u
+		join user_friend_list ufl
+		on u.id = ufl.friend_id
+		where ufl.friend_id = :userId
+	""", nativeQuery = true)
+	Set<User> findFriendsField(Long userId);
+
+	@Query(value = """
+		select u.* 
+		from users u
+		join user_friend_list ufl
+		on u.id = ufl.inverse_friend_id
+		where ufl.inverse_friend_id = :userId
+	""", nativeQuery = true)
+	Set<User> findInverseFriendsField(Long userId);
+
+	@Modifying
+	@Transactional
+	@Query(value = """
+	delete from user_friend_list 
+	where friend_id = :userIdOne and inverse_friend_id = :userIdTwo or 
+	      friend_id = :userIdTwo and inverse_friend_id = :userIdOne
+	""", nativeQuery = true)
+	void removeFromFriends(Long userIdOne, Long userIdTwo);
 
 }

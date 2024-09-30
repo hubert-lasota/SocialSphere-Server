@@ -1,4 +1,4 @@
-package org.hl.socialspherebackend.api.entity.chat;
+package org.hl.socialspherebackend.api.entity.user;
 
 public enum UserFriendRequestStatus {
 

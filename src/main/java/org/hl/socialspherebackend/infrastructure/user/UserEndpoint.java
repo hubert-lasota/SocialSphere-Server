@@ -6,7 +6,6 @@ import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
 import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
 import org.hl.socialspherebackend.application.user.UserFacade;
 import org.hl.socialspherebackend.application.user.UserFriendRequestNotificationSubscriber;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,57 +24,41 @@ public class UserEndpoint {
     }
 
 
-    @GetMapping(value = "/friend/notification/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribeFriendRequests(@RequestParam Long userId) {
-        return notificationSubscriber.subscribe(userId);
+    @GetMapping(value = "/friend/notification/subscribe")
+    public SseEmitter subscribeFriendRequests() {
+        return notificationSubscriber.subscribe();
     }
 
-    @PostMapping("/friend/send")
+    @GetMapping(value = "/friend/notification")
+    public ResponseEntity<?> findCurrentUserFriendRequests() {
+        DataResult<?> result = userFacade.findCurrentUserReceivedFriendRequests();
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+
+    @PostMapping(value = "/friend/send")
     public ResponseEntity<?> sendFriendRequest(@RequestBody UserFriendRequestDto userFriendRequestDto) {
         DataResult<?> result = userFacade.sendFriendRequest(userFriendRequestDto);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
-    @PostMapping("/friend/accept")
-    public ResponseEntity<?> acceptFriendRequest(UserFriendRequestDto request) {
-        DataResult<?> result = userFacade.acceptFriendRequest(request);
-
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
-    }
-
-    @PostMapping("/friend/reject")
-    public ResponseEntity<?> rejectFriendRequest(UserFriendRequestDto request) {
-        DataResult<?> result = userFacade.rejectFriendRequest(request);
-
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
-    }
-
-    @PostMapping("/profile")
+    @PostMapping(value = "/profile")
     public ResponseEntity<?> createUserProfile(
-            @RequestParam("profilePicture") MultipartFile profilePicture,
-            @RequestBody UserProfileRequest request
+            @RequestPart(value = "profilePicture", required = false) MultipartFile profilePicture,
+            @RequestPart("request") UserProfileRequest request
     ) {
         DataResult<?> result = userFacade.createUserProfile(request, profilePicture);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
-    @PostMapping("/profile/config")
+    @PostMapping(value = "/profile/config")
     public ResponseEntity<?> createUserProfileConfig(@RequestBody UserProfileConfigRequest request) {
         DataResult<?> result = userFacade.createUserProfileConfig(request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 
@@ -85,22 +68,18 @@ public class UserEndpoint {
     ) {
         DataResult<?> result = headerResponse ? userFacade.findCurrentUserHeader() : userFacade.findCurrentUser();
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping(value = "/{id}")
     public ResponseEntity<?> findUser(@PathVariable Long id) {
         DataResult<?> result = userFacade.findUserById(id);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 
-    @GetMapping("/profile")
+    @GetMapping(value = "/profile")
     public ResponseEntity<?> findUserProfile(@RequestParam(required = false) Long userId) {
         DataResult<?> result;
         if(userId != null) {
@@ -109,21 +88,17 @@ public class UserEndpoint {
             result = userFacade.findCurrentUserProfile();
         }
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
-    @GetMapping("/profile/picture")
+    @GetMapping(value = "/profile/picture")
     public ResponseEntity<?> findCurrentUserProfilePicture() {
         DataResult<?> result = userFacade.findCurrentUserProfilePicture();
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
-    @GetMapping("/profile/config")
+    @GetMapping(value = "/profile/config")
     public ResponseEntity<?> findUserProfileConfig(@RequestParam(required = false) Long userId) {
         DataResult<?> result;
         if(userId != null) {
@@ -131,19 +106,20 @@ public class UserEndpoint {
         } else {
             result = userFacade.findCurrentUserProfileConfig();
         }
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
-    @GetMapping("/friend")
+    @GetMapping(value = "/friend")
     public ResponseEntity<?> findUserFriends(
             @RequestParam(required = false) Long userId,
-            @RequestParam Integer page,
-            @RequestParam Integer size
+            @RequestParam(required = false, defaultValue = "false") boolean noSharedChat,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
     ) {
         DataResult<?> result;
-        if(page == null || size == null) {
+         if(noSharedChat) {
+             result = userFacade.findCurrentUserFriendsWithNoSharedChat();
+        } else if(page == null || size == null) {
             result = userFacade.findCurrentUserFriends();
         } else if (userId == null) {
             result = userFacade.findCurrentUserFriends(page, size);
@@ -151,32 +127,54 @@ public class UserEndpoint {
             result = userFacade.findUserFriends(userId, page, size);
         }
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+    @GetMapping(value = "/friend/request/toCurrentUser")
+    public ResponseEntity<?> findUserFriendRequestForCurrentUser(@RequestParam Long userId) {
+        DataResult<?> result = userFacade.findUserFriendRequestForCurrentUser(userId);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+    @GetMapping(value = "/friend/isCurrentUserWaiting")
+    public ResponseEntity<?> isCurrentUserWaitingForFriendResponse(@RequestParam Long userId) {
+        DataResult<?> result = userFacade.isCurrentUserWaitingForFriendResponse(userId);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+    @GetMapping(value = "/friend/isUserWaiting")
+    public ResponseEntity<?> isUserWaitingForCurrentUserFriendResponse(@RequestParam Long userId) {
+        DataResult<?> result = userFacade.isUserWaitingForCurrentUserFriendResponse(userId);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+    @GetMapping(value = "/isAllowed")
+    public ResponseEntity<?> isCurrentUserHasPermissionToCheckProfile(@RequestParam Long userId) {
+        DataResult<?> result = userFacade.isCurrentUserHasPermissionToCheckProfile(userId);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @GetMapping("/search")
     public ResponseEntity<?> searchFriends(
-            @RequestParam String containsString,
+            @RequestParam String pattern,
             @RequestParam Integer size
     ) {
-        DataResult<?> result = userFacade.findUsers(containsString, size);
+        DataResult<?> result = userFacade.findUsers(pattern, size);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @PutMapping("/profile")
     public ResponseEntity<?> updateUserProfile(
-            @RequestPart("profilePicture") MultipartFile profilePicture,
+            @RequestPart(value = "profilePicture", required = false) MultipartFile profilePicture,
             @RequestPart("request") UserProfileRequest request) {
         DataResult<?> result = userFacade.updateCurrentUserProfile(request, profilePicture);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 
@@ -184,18 +182,28 @@ public class UserEndpoint {
     public ResponseEntity<?> updateUserConfig(@RequestBody UserProfileConfigRequest request) {
         DataResult<?> result = userFacade.updateCurrentUserProfileConfig(request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+    @PatchMapping("/friend/accept")
+    public ResponseEntity<?> acceptFriendRequest(@RequestParam Long friendRequestId) {
+        DataResult<?> result = userFacade.acceptFriendRequest(friendRequestId);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+    @PatchMapping("/friend/reject")
+    public ResponseEntity<?> rejectFriendRequest(@RequestParam Long friendRequestId) {
+        DataResult<?> result = userFacade.rejectFriendRequest(friendRequestId);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @DeleteMapping("/friend/remove")
     public ResponseEntity<?> removeFriendFromFriendList(@RequestParam Long friendId) {
         DataResult<?> result = userFacade.removeFromFriendList(friendId);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 }

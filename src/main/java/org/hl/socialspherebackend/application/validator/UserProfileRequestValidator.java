@@ -6,6 +6,8 @@ public class UserProfileRequestValidator extends RequestValidatorChain {
 
     public UserProfileRequestValidator(RequestValidatorChain next) {
         super(next);
+        setTextMinSize(1);
+        setAcceptWhitespace(true);
     }
 
 
