@@ -11,12 +11,15 @@ import org.hl.socialspherebackend.application.validator.RequestValidateResult;
 import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.hl.socialspherebackend.infrastructure.security.jwt.JwtFacade;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.time.Instant;
 
 public class AuthorizationFacade {
 
@@ -43,16 +46,18 @@ public class AuthorizationFacade {
     public DataResult<LoginResponse> createLogin(LoginRequest request) {
         if(userRepository.existsByUsername(request.username())) {
             return DataResult.failure(AuthorizationErrorCode.USER_ALREADY_EXISTS,
-                    "Username: %s exists in database!".formatted(request.username()));
+                    "Username: %s exists in database!".formatted(request.username()),
+                    HttpStatus.BAD_REQUEST);
         }
         LoginRequest encodedRequest = new LoginRequest(request.username(), passwordEncoder.encode(request.password()));
 
-        RequestValidateResult validateResult = requestValidator.validate(encodedRequest);
+        RequestValidateResult validateResult = requestValidator.validate(request);
         if(!validateResult.valid()) {
-            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage(), HttpStatus.BAD_REQUEST);
         }
 
-        User user = AuthorizationMapper.fromRequestToEntity(encodedRequest);
+        Instant now = Instant.now();
+        User user = AuthorizationMapper.fromRequestToEntity(encodedRequest, now);
         Authority authority = new Authority(user, "USER");
         user.appendAuthority(authority);
         userRepository.save(user);
@@ -74,15 +79,20 @@ public class AuthorizationFacade {
                         .orElseThrow(() -> new UsernameNotFoundException("There is no user with this username : %s".formatted(request.username())));
             } catch (UsernameNotFoundException e) {
                 return DataResult.failure(AuthorizationErrorCode.USERNAME_DOES_NOT_EXISTS,
-                        "username: %s doesn't exists in database!".formatted(request.username()));
+                        "username: %s doesn't exists in database!".formatted(request.username()),
+                        HttpStatus.BAD_REQUEST);
             }
         } else {
             return DataResult.failure(AuthorizationErrorCode.USERNAME_DOES_NOT_EXISTS,
-                    "username: %s doesn't exists in database!".formatted(request.username()));
+                    "username: %s doesn't exists in database!".formatted(request.username()),
+                    HttpStatus.BAD_REQUEST);
         }
+
 
         String jwt = jwtFacade.generateToken(userDetails);
         userDetails.setOnline(true);
+        Instant now = Instant.now();
+        userDetails.setLastOnlineAt(now);
         userRepository.save(userDetails);
 
         LoginResponse response = AuthorizationMapper.fromEntityToResponse(userDetails, jwt);
@@ -96,7 +106,8 @@ public class AuthorizationFacade {
                     .orElseThrow(() -> new UsernameNotFoundException("There is no user with this username : %s".formatted(request.username())));
         } catch (UsernameNotFoundException e) {
             return DataResult.failure(AuthorizationErrorCode.USERNAME_DOES_NOT_EXISTS,
-                    "username: %s doesn't exists in database!".formatted(request.username()));
+                    "username: %s doesn't exists in database!".formatted(request.username()),
+                    HttpStatus.BAD_REQUEST);
         }
 
 
@@ -104,13 +115,15 @@ public class AuthorizationFacade {
             LoginResponse response = AuthorizationMapper.fromEntityToResponse((User) userDetails, request.jwt());
             return DataResult.success(response);
         } else {
-            return DataResult.failure(AuthorizationErrorCode.NOT_VALID_USER, "token is not valid!");
+            return DataResult.failure(AuthorizationErrorCode.NOT_VALID_USER,
+                    "Token is not valid!", HttpStatus.BAD_REQUEST);
         }
     }
 
     public DataResult<LoginResponse> refreshUserToken(UserTokenRequest request) {
         if(validateUserToken(request).isFailure()) {
-            return DataResult.failure(AuthorizationErrorCode.NOT_VALID_USER_TOKEN, "UserToken is invalid");
+            return DataResult.failure(AuthorizationErrorCode.NOT_VALID_USER_TOKEN,
+                    "UserToken is invalid", HttpStatus.BAD_REQUEST);
         }
 
         UserDetails userDetails = userDetails = userRepository.findByUsername(request.username())

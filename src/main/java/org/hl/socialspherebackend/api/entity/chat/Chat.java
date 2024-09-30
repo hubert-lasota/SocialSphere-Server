@@ -15,13 +15,19 @@ public class Chat {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JoinColumn(name = "created_by_id", nullable = false, referencedColumnName = "id")
+    @ManyToOne(optional = false, fetch = FetchType.EAGER)
+    private User createdBy;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "datetime2")
     private Instant createdAt;
 
-    @Column(name = "last_message", columnDefinition = "datetime2")
-    private Instant lastMessage;
+    @JoinColumn(name = "last_message_id", referencedColumnName = "id")
+    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private ChatMessage lastMessage;
 
-    @OneToMany(mappedBy = "chat", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+
+    @OneToMany(mappedBy = "chat", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private Set<ChatMessage> chatMessages = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.EAGER)
@@ -36,7 +42,8 @@ public class Chat {
 
     }
 
-    public Chat(Instant createdAt) {
+    public Chat(User createdBy, Instant createdAt) {
+        this.createdBy = createdBy;
         this.createdAt = createdAt;
     }
 
@@ -65,6 +72,10 @@ public class Chat {
         this.id = id;
     }
 
+    public User getCreatedBy() {
+        return createdBy;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -73,20 +84,16 @@ public class Chat {
         this.createdAt = createdAt;
     }
 
-    public Instant getLastMessage() {
+    public ChatMessage getLastMessage() {
         return lastMessage;
     }
 
-    public void setLastMessage(Instant lastMessage) {
+    public void setLastMessage(ChatMessage lastMessage) {
         this.lastMessage = lastMessage;
     }
 
     public Set<ChatMessage> getChatMessages() {
         return chatMessages;
-    }
-
-    public void setChatMessages(Set<ChatMessage> chatMessages) {
-        this.chatMessages = chatMessages;
     }
 
     public Set<User> getUsers() {
@@ -99,12 +106,6 @@ public class Chat {
 
     @Override
     public String toString() {
-        return "Chat{" +
-                "id=" + id +
-                ", createdAt=" + createdAt +
-                ", lastMessage=" + lastMessage +
-                ", chatMessages=" + chatMessages +
-                ", users=" + users +
-                '}';
+        return "Chat{" + "id=" + id + "}";
     }
 }

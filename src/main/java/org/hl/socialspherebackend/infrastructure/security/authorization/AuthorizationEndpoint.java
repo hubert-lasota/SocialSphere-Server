@@ -25,36 +25,28 @@ public class AuthorizationEndpoint {
     public ResponseEntity<?> createLogin(@RequestBody LoginRequest request) {
         DataResult<?> result = authorizationFacade.createLogin(request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         DataResult<?> result = authorizationFacade.login(request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @PostMapping("/validate")
     public ResponseEntity<?> validateUserToken(@RequestBody UserTokenRequest request) {
         DataResult<?> result = authorizationFacade.validateUserToken(request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshUserToken(@RequestBody UserTokenRequest request) {
         DataResult<?> result = authorizationFacade.refreshUserToken(request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 }

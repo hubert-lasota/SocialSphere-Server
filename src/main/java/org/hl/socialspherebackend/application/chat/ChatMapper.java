@@ -26,15 +26,17 @@ class ChatMapper {
         return new ChatMessageResponse(messageId, chatId, sender, content, sentAt);
     }
 
-    static ChatResponse fromEntitiesToResponse(Chat chat, ChatMessage lastMessage, User user) {
+    static ChatResponse fromEntitiesToResponse(Chat chat, User user, boolean hasNotSeenMessages) {
         ChatMessageResponse messageResponse = null;
+        ChatMessage lastMessage = chat.getLastMessage();
         if (lastMessage != null) {
             messageResponse = fromEntityToResponse(lastMessage);
         }
 
         Long chatId = chat.getId();
         Instant createdAt = chat.getCreatedAt();
+        UserHeaderResponse createdBy = UserMapper.fromEntityToUserHeaderResponse(chat.getCreatedBy(), null);
         UserHeaderResponse userResponse = UserMapper.fromEntityToUserHeaderResponse(user, null);
-        return new ChatResponse(chatId, createdAt, messageResponse, userResponse);
+        return new ChatResponse(chatId, createdBy, createdAt, hasNotSeenMessages, messageResponse, userResponse);
     }
 }

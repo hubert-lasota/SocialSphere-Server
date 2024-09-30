@@ -19,11 +19,11 @@ public class ChatMessage {
     @Column(name = "created_at", nullable = false, columnDefinition = "datetime2")
     private Instant createdAt;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "chat_id", nullable = false, referencedColumnName = "id")
     private Chat chat;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id", nullable = false, referencedColumnName = "id")
     private User sender;
 
@@ -77,6 +77,14 @@ public class ChatMessage {
 
     public User getSender() {
         return sender;
+    }
+
+    public boolean isSeen() {
+        return seen;
+    }
+
+    public void setSeen(boolean seen) {
+        this.seen = seen;
     }
 
     @Override

@@ -11,12 +11,12 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 @Component
-public class JwtWebSocketHandshakeFilter implements Filter {
+public class JwtInRequestParamsFilter implements Filter {
 
     private final JwtFacade jwtFacade;
     private final UserDetailsService userDetailsService;
 
-    public JwtWebSocketHandshakeFilter(JwtFacade jwtFacade, UserDetailsService userDetailsService) {
+    public JwtInRequestParamsFilter(JwtFacade jwtFacade, UserDetailsService userDetailsService) {
         this.jwtFacade = jwtFacade;
         this.userDetailsService = userDetailsService;
     }

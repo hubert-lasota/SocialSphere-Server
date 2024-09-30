@@ -1,6 +1,9 @@
 CREATE TABLE users (
     id bigint primary key identity(1, 1),
-    username varchar(25) not null unique,
-    password varchar(250) not null,
-    online bit not null
+    username nvarchar(50) not null unique,
+    password nvarchar(250) not null,
+    online bit not null,
+    created_at datetime2 not null,
+    updated_at datetime2 not null,
+    last_online_at datetime2
 );

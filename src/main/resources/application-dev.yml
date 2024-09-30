@@ -1,6 +1,9 @@
 spring:
   application:
     name: SocialSphereBackend
+  mvc:
+    async:
+      request-timeout: -1
   servlet:
     multipart:
       enabled: true
@@ -26,11 +29,11 @@ logging:
   level:
     org:
       hibernate:
-        SQL: INFO
+        #SQL: DEBUG
         type:
           descriptor:
             sql:
-              BasicBinder: INFO
+             # BasicBinder: DEBUG
     org.hl.socialspherebackend:
         application:
           user: DEBUG
@@ -39,18 +42,19 @@ logging:
           authorization: DEBUG
           util: DEBUG
           chat: DEBUG
+        infrastructure:
+          web:
+            WebSocketConfig: INFO
+
     org.springframework:
       jdbc:
         core: INFO
-        datasource: INFO
-      transaction: INFO
-      hibernate: INFO
+
       web:
+        servlet: DEBUG
         socket: INFO
         socket.server: INFO
       messaging: INFO
-
-
 
 jwt:
   secret: 951b507db97ad30ab856ce9e0751a0a22c3b4c83db0b1b75537cd93996fa4c58

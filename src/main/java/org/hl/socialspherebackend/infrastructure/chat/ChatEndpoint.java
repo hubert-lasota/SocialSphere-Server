@@ -1,12 +1,10 @@
 package org.hl.socialspherebackend.infrastructure.chat;
 
+import org.hl.socialspherebackend.api.dto.chat.request.ChatRequest;
 import org.hl.socialspherebackend.api.dto.common.DataResult;
 import org.hl.socialspherebackend.application.chat.ChatFacade;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(value = "/api/v1/chat")
@@ -19,30 +17,39 @@ public class ChatEndpoint {
     }
 
 
+    @PostMapping
+    public ResponseEntity<?> createChat(@RequestBody ChatRequest chatRequest) {
+        DataResult<?> result = chatFacade.createChat(chatRequest);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+
     @GetMapping
     public ResponseEntity<?> findUserChats() {
         DataResult<?> result = chatFacade.findCurrentUserChats();
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.notFound().build();
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @GetMapping(value = "/message")
     public ResponseEntity<?> findChatMessages(@RequestParam Long chatId) {
         DataResult<?> result = chatFacade.findChatMessages(chatId);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.notFound().build();
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @GetMapping(value = "/message/new")
-    public ResponseEntity<?> findChatIdsWithNewMessage() {
-        DataResult<?> result = chatFacade.findChatsIdWithNewMessage();
+    public ResponseEntity<?> findChatsWithNewMessages() {
+        DataResult<?> result = chatFacade.findCurrentUserChatsWithNewMessage();
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().build();
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+    @PatchMapping(value = "/message/seenAll")
+    public ResponseEntity<?> updateChat(@RequestParam Long chatId) {
+        DataResult<?> result = chatFacade.setSeenAllMessagesInChat(chatId);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 }

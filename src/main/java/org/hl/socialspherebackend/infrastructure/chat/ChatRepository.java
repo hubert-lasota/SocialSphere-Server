@@ -21,14 +21,15 @@ public interface ChatRepository extends JpaRepository<Chat, Long> {
 
     @Query(value =
             """
-            select ch.id\s
+            select ch.*
             from chat ch
             join chat_bound_users chbu
             on ch.id = chbu.chat_id
             join chat_message chm
             on ch.id = chm.chat_id
-            where chm.seen = 1;
+            where chm.seen = 0;
             """, nativeQuery = true)
-    List<Long> findChatsIdWithNewMessage(Long userId);
+    List<Chat> findChatsWithNewMessages(Long userId);
+
 
 }

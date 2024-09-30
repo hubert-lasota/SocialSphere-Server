@@ -1,6 +1,9 @@
 spring:
   application:
     name: SocialSphereBackend
+  mvc:
+    async:
+      request-timeout: -1
 
   datasource:
     url: jdbc:sqlserver://localhost:1433;database=SocialSphere;trustServerCertificate=true;
@@ -8,6 +11,8 @@ spring:
     password: root123
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
+  jpa:
+    open-in-view: true
 
   liquibase:
     change-log: classpath:database/changelog.xml
