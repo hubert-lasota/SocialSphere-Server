@@ -5,8 +5,8 @@ import org.hl.socialspherebackend.api.dto.post.request.PostCommentRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostLikeRequest;
 import org.hl.socialspherebackend.api.dto.post.request.PostRequest;
 import org.hl.socialspherebackend.application.post.PostFacade;
+import org.hl.socialspherebackend.application.post.PostNotificationFacade;
 import org.hl.socialspherebackend.application.post.PostNotificationSubscriber;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,37 +19,41 @@ import java.util.List;
 public class PostEndpoint {
 
     private final PostFacade postFacade;
+    private final PostNotificationFacade postNotificationFacade;
     private final PostNotificationSubscriber postNotificationSubscriber;
 
-    public PostEndpoint(PostFacade postFacade, PostNotificationSubscriber notificationSubscriber) {
+    public PostEndpoint(PostFacade postFacade, PostNotificationFacade postNotificationFacade, PostNotificationSubscriber notificationSubscriber) {
         this.postFacade = postFacade;
+        this.postNotificationFacade = postNotificationFacade;
         this.postNotificationSubscriber = notificationSubscriber;
     }
 
 
-    @GetMapping(value = "/notification/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribePosts(@RequestParam Long userId) {
-        return postNotificationSubscriber.subscribe(userId);
+    @GetMapping(value = "/notification/subscribe")
+    public SseEmitter subscribePosts() {
+        return postNotificationSubscriber.subscribe();
     }
 
+    @GetMapping(value = "/notification")
+    public ResponseEntity<?> findCurrentUserPostUpdateNotifications() {
+        DataResult<?> result = postNotificationFacade.findCurrentUserPostUpdateNotifications();
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
 
     @PostMapping
     public ResponseEntity<?> createPost(@RequestPart("request") PostRequest request,
-                                                       @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+                                        @RequestPart(value = "images", required = false) List<MultipartFile> images) {
         DataResult<?> result = postFacade.createPost(request, images);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @PostMapping(value = "/comment")
     public ResponseEntity<?>  createPostComment(@RequestBody PostCommentRequest request) {
         DataResult<?> result = postFacade.addCommentToPost(request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 
@@ -57,9 +61,7 @@ public class PostEndpoint {
     public ResponseEntity<?> addLikeToPost(@RequestBody PostLikeRequest request) {
         DataResult<?> result = postFacade.addLikeToPost(request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 
@@ -73,11 +75,9 @@ public class PostEndpoint {
                 postFacade.findCurrentUserPosts(page, size) :
                 postFacade.findUserPosts(userId, page, size);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
-    
+
     @GetMapping("/recent")
     public ResponseEntity<?> findRecentPostsAvailableForCurrentUser(
             @RequestParam Integer page,
@@ -85,9 +85,7 @@ public class PostEndpoint {
     ) {
         DataResult<?> result = postFacade.findRecentPostsAvailableForCurrentUser(page, size);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @GetMapping(value = "/comment")
@@ -98,9 +96,7 @@ public class PostEndpoint {
     ) {
         DataResult<?> result = postFacade.findPostComments(postId, page, size);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 
@@ -110,18 +106,14 @@ public class PostEndpoint {
                                         @RequestPart(value = "images", required = false) List<MultipartFile> images) {
         DataResult<?> result = postFacade.updatePost(postId, request, images);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @PutMapping(value = "/comment/{id}")
     public ResponseEntity<?> updatePostComment(@PathVariable(value = "id") Long postCommentId, @RequestBody PostCommentRequest request) {
         DataResult<?> result = postFacade.updatePostComment(postCommentId, request);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 
@@ -129,27 +121,21 @@ public class PostEndpoint {
     public ResponseEntity<?> removeLikeFromPost(@RequestParam Long postId) {
         DataResult<?> result = postFacade.removeLikeFromPost(postId);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @DeleteMapping(value = "/{id}")
     public ResponseEntity<?> deletePost(@PathVariable(value = "id") Long postId) {
         DataResult<?> result = postFacade.deletePost(postId);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
     @DeleteMapping(value = "/comment/{id}")
     public ResponseEntity<?> deletePostComment(@PathVariable(value = "id") Long postCommentId) {
         DataResult<?> result = postFacade.deletePostComment(postCommentId);
 
-        return result.isSuccess() ?
-                ResponseEntity.ok(result) :
-                ResponseEntity.badRequest().body(result);
+        return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
 }

@@ -18,7 +18,7 @@ public class PostUpdateNotification {
     private Post updatedPost;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "updated_by", nullable = false, referencedColumnName = "id")
+    @JoinColumn(name = "updated_by_id", nullable = false, referencedColumnName = "id")
     private User updatedBy;
 
     @Enumerated(EnumType.STRING)
@@ -29,7 +29,7 @@ public class PostUpdateNotification {
     private Instant updatedAt;
 
     @Column(name = "checked", nullable = false, columnDefinition = "BIT")
-    private boolean isChecked;
+    private boolean checked;
 
     protected PostUpdateNotification() {
 
@@ -40,13 +40,9 @@ public class PostUpdateNotification {
         this.updatedBy = updatedBy;
         this.updateType = updateType;
         this.updatedAt = updatedAt;
-        this.isChecked = isChecked;
+        this.checked = isChecked;
     }
 
-
-    public void setIsChecked(boolean checked) {
-        this.isChecked = checked;
-    }
 
     public Long getId() {
         return id;
@@ -68,8 +64,12 @@ public class PostUpdateNotification {
         return updatedAt;
     }
 
-    public boolean getIsChecked() {
-        return isChecked;
+    public void setChecked(boolean checked) {
+        this.checked = checked;
+    }
+
+    public boolean isChecked() {
+        return checked;
     }
 
     @Override
@@ -79,7 +79,8 @@ public class PostUpdateNotification {
                 ", updatedPost=" + updatedPost +
                 ", updatedBy=" + updatedBy +
                 ", updateType=" + updateType +
+                ", updatedAt=" + updatedAt +
+                ", checked=" + checked +
                 '}';
     }
-
 }

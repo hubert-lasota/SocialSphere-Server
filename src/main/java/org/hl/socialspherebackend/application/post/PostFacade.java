@@ -29,6 +29,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -92,7 +93,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
         RequestValidateResult validateResult = requestValidator.validate(request);
         if(!validateResult.valid()) {
-            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage(), HttpStatus.BAD_REQUEST);
         }
 
         Instant now = Instant.now(clock);
@@ -109,7 +110,8 @@ public class PostFacade implements Observable<PostUpdateDetails> {
                 } catch (IOException e) {
                     log.debug("Could not get bytes from image. Error: {}", e.getMessage());
                     return DataResult.failure(PostErrorCode.POST_IMAGES_ARE_BROKEN,
-                            "Could not get bytes from image. Img = %s is broken".formatted(img.getOriginalFilename()));
+                            "Could not get bytes from image. Img = %s is broken".formatted(img.getOriginalFilename()),
+                            HttpStatus.INTERNAL_SERVER_ERROR);
                 }
                 PostImage postImage = new PostImage(compressedImg, type, name, post);
                 postImages.add(postImage);
@@ -124,6 +126,11 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     }
 
     public DataResult<PostCommentResponse> addCommentToPost(PostCommentRequest request) {
+        RequestValidateResult validateResult = requestValidator.validate(request);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
+        }
+
         Optional<User> authorOpt = AuthUtils.getCurrentUser();
         if(authorOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
@@ -135,11 +142,6 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         if(postOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
                     "Could not find post with id = %d in database!".formatted(request.postId()));
-        }
-
-        RequestValidateResult validateResult = requestValidator.validate(request);
-        if(!validateResult.valid()) {
-            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         Post post = postOpt.get();
@@ -241,7 +243,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         UserPermissionCheckResult permissionCheckResult = permissionChecker.checkUserProfileResourceAccess(currentUser, userToCheck);
         if(!permissionCheckResult.allowed()) {
             return DataResult.failure(PostErrorCode.USER_POSTS_ARE_NOT_ALLOWED_TO_FETCH,
-                    permissionCheckResult.notAllowedErrorMessage());
+                    permissionCheckResult.notAllowedErrorMessage(), HttpStatus.UNAUTHORIZED);
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt"));
@@ -272,7 +274,8 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     public DataResult<Page<PostResponse>> findRecentPostsAvailableForCurrentUser(int page, int size) {
         Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user!");
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
+                    "Could not find current user!", HttpStatus.BAD_REQUEST);
         }
         User user = userOpt.get();
 
@@ -405,13 +408,15 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
         Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         if(currentUserOpt.isEmpty()) {
-            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
+                    "Could not find current user!");
         }
         User currentUser = currentUserOpt.get();
         Long currentUserId = currentUser.getId();
         if(!commentAuthorId.equals(currentUserId)) {
             return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,
-                    "User with id=%d is not comment(%d) author".formatted(commentAuthorId, postCommentId));
+                    "User with id=%d is not comment(%d) author".formatted(commentAuthorId, postCommentId),
+                    HttpStatus.UNAUTHORIZED);
         }
 
         comment.setContent(request.content());
@@ -420,7 +425,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         return DataResult.success(response);
     }
 
-    public DataResult<String> deletePost(Long postId) {
+    public DataResult<?> deletePost(Long postId) {
         Optional<Post> postOpt = postRepository.findById(postId);
         if(postOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.POST_NOT_FOUND,
@@ -431,7 +436,8 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         Long postAuthorId = postAuthor.getId();
         Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         if(currentUserOpt.isEmpty()) {
-            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
+                    "Could not find current user!");
         }
         User currentUser = currentUserOpt.get();
         Long currentUserId= currentUser.getId();
@@ -441,10 +447,10 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         }
 
         postRepository.delete(post);
-        return DataResult.success("Post with id = %d has been deleted".formatted(postId));
+        return DataResult.success(null);
     }
 
-    public DataResult<String> deletePostComment(Long postCommentId) {
+    public DataResult<?> deletePostComment(Long postCommentId) {
         Optional<PostComment> commentOpt = postCommentRepository.findById(postCommentId);
         if(commentOpt.isEmpty()) {
             return DataResult.failure(PostErrorCode.POST_COMMENT_NOT_FOUND,
@@ -462,18 +468,19 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         Long currentUserId= currentUser.getId();
 
         if(!commentAuthorId.equals(currentUserId)) {
-            return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR,"Current user is not post comment author!");
+            return DataResult.failure(PostErrorCode.USER_IS_NOT_POST_COMMENT_AUTHOR, "Current user is not post comment author!");
         }
 
         Post post = comment.getPost();
         post.getComments().remove(comment);
         postRepository.save(post);
-        return DataResult.success("PostComment with id = %d has been deleted".formatted(postCommentId));
+        return DataResult.success(null);
     }
 
     private boolean checkIfCurrentUserLikedPost(User user, Post post) {
-        for(User likedBy : post.getLikedBy()) {
-            if(likedBy.equals(user))
+    List<User> likedBy = userRepository.findUsersLikedPost(post.getId());
+        for(User u : likedBy) {
+            if(u.equals(user))
                 return true;
         }
         return false;

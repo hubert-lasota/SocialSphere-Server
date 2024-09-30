@@ -1,12 +1,15 @@
 package org.hl.socialspherebackend.application.post;
 
 import org.hl.socialspherebackend.api.dto.post.response.PostUpdateDetails;
+import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.application.common.Observer;
+import org.hl.socialspherebackend.application.util.AuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -23,13 +26,20 @@ public class PostNotificationManager implements Observer<PostUpdateDetails>, Pos
     }
 
     @Override
-    public SseEmitter subscribe(Long userId) {
-        SseEmitter sseEmitter = new SseEmitter();
-        clients.put(userId, sseEmitter);
+    public SseEmitter subscribe() {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            log.debug("Could not find current user in security context");
+            return null;
+        }
+        User currentUser = currentUserOpt.get();
+        Long userId = currentUser.getId();
 
+        SseEmitter sseEmitter = new SseEmitter();
         sseEmitter.onCompletion(() -> clients.remove(userId));
         sseEmitter.onTimeout(() -> clients.remove(userId));
 
+        clients.put(userId, sseEmitter);
         return sseEmitter;
     }
 
@@ -40,11 +50,23 @@ public class PostNotificationManager implements Observer<PostUpdateDetails>, Pos
             return;
         }
 
+        postNotificationFacade.savePostUpdateNotification(subject);
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            log.debug("Could not find current user in security context");
+            return;
+        }
+
+        Long currentUserId = currentUserOpt.get().getId();
+        if(currentUserId.equals(subject.updatedBy().userId())) {
+            log.debug("Won't send notification because current user is receiver");
+            return;
+        }
+
         if(sendNotification(subject)) {
-           log.trace("Successfully sent notification: {}", subject);
+           log.debug("Successfully sent notification: {}", subject);
        } else {
-           log.trace("Notification {} will be stored in database", subject);
-           postNotificationFacade.savePostUpdateNotification(subject);
+           log.debug("Could not send notification: {}", subject);
        }
     }
 

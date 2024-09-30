@@ -7,6 +7,7 @@ import org.hl.socialspherebackend.api.dto.post.response.PostUpdateNotificationRe
 import org.hl.socialspherebackend.api.entity.post.Post;
 import org.hl.socialspherebackend.api.entity.post.PostUpdateNotification;
 import org.hl.socialspherebackend.api.entity.user.User;
+import org.hl.socialspherebackend.application.util.AuthUtils;
 import org.hl.socialspherebackend.infrastructure.post.PostRepository;
 import org.hl.socialspherebackend.infrastructure.post.PostUpdateNotificationRepository;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
@@ -14,11 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import static java.util.stream.Collectors.toSet;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class PostNotificationFacade {
 
@@ -45,7 +43,7 @@ public class PostNotificationFacade {
         }
         Post post = postOpt.get();
 
-        Long userId = postUpdateDetails.updatedBy().user().id();
+        Long userId = postUpdateDetails.updatedBy().userId();
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
             log.debug("There is no user with id {} in database", userId);
@@ -59,17 +57,16 @@ public class PostNotificationFacade {
     }
 
 
-    public DataResult<Set<PostUpdateNotificationResponse>> findPostUpdateNotifications(Long userId) {
-        Optional<User> userOpt = userRepository.findById(userId);
+    public DataResult<Set<PostUpdateNotificationResponse>> findCurrentUserPostUpdateNotifications() {
+        Optional<User> userOpt = AuthUtils.getCurrentUser();
         if (userOpt.isEmpty()) {
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
-                    "User with id = %d does not exists in database".formatted(userId));
+            return DataResult.failure(PostErrorCode.USER_NOT_FOUND, "Could not find current user");
         }
         User user = userOpt.get();
 
         if (!postRepository.existsPostsByUser(user)) {
             return DataResult.failure(PostErrorCode.USER_HAS_NO_POST,
-                    "User with id = %d never created post".formatted(userId));
+                    "Current user never created post");
         }
 
         List<PostUpdateNotification> notifications =
@@ -77,12 +74,15 @@ public class PostNotificationFacade {
 
         if(notifications.isEmpty()) {
             return DataResult.failure(PostErrorCode.USER_HAS_NO_POST_NOTIFICATION,
-                    "There is no post notification in database for user with id = %d ".formatted(userId));
+                    "There is no post notification in database for current user");
         }
 
         Set<PostUpdateNotificationResponse> response = notifications.stream()
+                .filter(notification -> !notification.getUpdatedBy().equals(user))
+                .sorted(Comparator.comparing(PostUpdateNotification::getUpdatedAt))
                 .map(PostMapper::fromEntityToResponse)
-                .collect(toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
         return DataResult.success(response);
     }
 

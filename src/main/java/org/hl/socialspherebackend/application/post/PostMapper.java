@@ -5,8 +5,8 @@ import org.hl.socialspherebackend.api.dto.post.response.PostCommentResponse;
 import org.hl.socialspherebackend.api.dto.post.response.PostResponse;
 import org.hl.socialspherebackend.api.dto.post.response.PostUpdateDetails;
 import org.hl.socialspherebackend.api.dto.post.response.PostUpdateNotificationResponse;
+import org.hl.socialspherebackend.api.dto.user.response.UserHeaderResponse;
 import org.hl.socialspherebackend.api.dto.user.response.UserProfileResponse;
-import org.hl.socialspherebackend.api.dto.user.response.UserWrapperResponse;
 import org.hl.socialspherebackend.api.entity.post.*;
 import org.hl.socialspherebackend.api.entity.user.User;
 import org.hl.socialspherebackend.api.entity.user.UserProfile;
@@ -20,14 +20,14 @@ import java.util.Set;
 
 import static java.util.stream.Collectors.toSet;
 
-public class PostMapper {
+class PostMapper {
 
     private static final Logger log = LoggerFactory.getLogger(PostMapper.class);
 
     private PostMapper() { }
 
 
-    public static PostResponse fromEntityToResponse(Post post, Boolean isLiked) {
+    static PostResponse fromEntityToResponse(Post post, Boolean isLiked) {
         Set<FileDetails> decompressedPostImages = null;
         Set<PostImage> images = post.getImages();
         if(images != null && !images.isEmpty()) {
@@ -53,7 +53,7 @@ public class PostMapper {
         );
     }
 
-    public static PostCommentResponse fromEntityToResponse(PostComment postComment) {
+    static PostCommentResponse fromEntityToResponse(PostComment postComment) {
         UserProfileResponse userProfileResponse = getUserProfileResponse(postComment);
 
         return new PostCommentResponse(
@@ -67,33 +67,33 @@ public class PostMapper {
         );
     }
 
-    public static PostUpdateNotificationResponse fromEntityToResponse(PostUpdateNotification postUpdateNotification) {
+    static PostUpdateNotificationResponse fromEntityToResponse(PostUpdateNotification postUpdateNotification) {
         Post updatedPost = postUpdateNotification.getUpdatedPost();
         PostUpdateType postUpdateType = postUpdateNotification.getUpdateType();
         User updatedBy = postUpdateNotification.getUpdatedBy();
         Instant updatedAt = postUpdateNotification.getUpdatedAt();
         PostUpdateDetails postUpdateDetails = fromEntitiesToResponse(updatedPost, postUpdateType, updatedBy, updatedAt);
-        boolean checked = postUpdateNotification.getIsChecked();
+        boolean checked = postUpdateNotification.isChecked();
         Long id = postUpdateNotification.getId();
         return new PostUpdateNotificationResponse(id, postUpdateDetails, checked);
     }
 
-    public static FileDetails fromEntityToResponse(PostImage postImage) {
+    static FileDetails fromEntityToResponse(PostImage postImage) {
         String name = postImage.getName();
         String type = postImage.getType();
         byte[] content = FileUtils.decompressFile(postImage.getImage());
         return new FileDetails(name, type, content);
     }
 
-    public static PostUpdateDetails fromEntitiesToResponse(Post updatedPost,
+    static PostUpdateDetails fromEntitiesToResponse(Post updatedPost,
                                                            PostUpdateType updateType,
                                                            User updatedBy,
                                                            Instant updatedAt) {
 
         PostResponse postResponse = PostMapper.fromEntityToResponse(updatedPost, null);
-        UserWrapperResponse userWrapperResponse = UserMapper.fromEntityToUserWrapperResponse(updatedBy);
+        UserHeaderResponse userHeaderResponse = UserMapper.fromEntityToUserHeaderResponse(updatedBy, null);
 
-        return new PostUpdateDetails(postResponse, updateType, userWrapperResponse, updatedAt);
+        return new PostUpdateDetails(postResponse, updateType, userHeaderResponse, updatedAt);
     }
 
     private static UserProfileResponse getUserProfileResponse(Post post) {
