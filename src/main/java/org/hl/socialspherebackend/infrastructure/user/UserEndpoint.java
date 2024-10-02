@@ -31,7 +31,7 @@ public class UserEndpoint {
 
     @GetMapping(value = "/friend/notification")
     public ResponseEntity<?> findCurrentUserFriendRequests() {
-        DataResult<?> result = userFacade.findCurrentUserReceivedFriendRequests();
+        DataResult<?> result = userFacade.findCurrentUserFriendNotifications();
 
         return new ResponseEntity<>(result, result.getHttpStatus());
     }

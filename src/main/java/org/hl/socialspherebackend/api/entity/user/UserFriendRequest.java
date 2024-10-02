@@ -28,8 +28,8 @@ public class UserFriendRequest {
     @Column(name = "sent_at", nullable = false)
     private Instant sentAt;
 
-    @Column(name = "reply_at")
-    private Instant replyAt;
+    @Column(name = "replied_at")
+    private Instant repliedAt;
 
     protected UserFriendRequest() {
 
@@ -74,12 +74,12 @@ public class UserFriendRequest {
         return sentAt;
     }
 
-    public Instant getReplyAt() {
-        return replyAt;
+    public Instant getRepliedAt() {
+        return repliedAt;
     }
 
-    public void setReplyAt(Instant replyAt) {
-        this.replyAt = replyAt;
+    public void setRepliedAt(Instant replyAt) {
+        this.repliedAt = replyAt;
     }
 
     @Override
@@ -95,6 +95,7 @@ public class UserFriendRequest {
         return Objects.hash(id);
     }
 
+
     @Override
     public String toString() {
         return "UserFriendRequest{" +
@@ -102,7 +103,8 @@ public class UserFriendRequest {
                 ", sender=" + sender +
                 ", receiver=" + receiver +
                 ", status=" + status +
+                ", sentAt=" + sentAt +
+                ", repliedAt=" + repliedAt +
                 '}';
     }
-
 }

@@ -76,7 +76,6 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
     }
 
 
-    // TODO check if receiver sent current user a friend request
     public DataResult<UserFriendRequestResponse> sendFriendRequest(UserFriendRequestDto friendRequest) {
         Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         if(currentUserOpt.isEmpty()) {
@@ -94,14 +93,6 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         User sender = currentUserOpt.get();
         User receiver = receiverOpt.get();
 
-        boolean didSenderSentFriendRequest = userFriendRequestRepository.findSentFriendRequestsByUserId(sender.getId())
-                .stream()
-                .anyMatch(request -> request.getSender().equals(sender) && request.getReceiver().equals(receiver));
-
-        if(didSenderSentFriendRequest) {
-            return DataResult.failure(UserErrorCode.SENDER_ALREADY_SENT_FRIEND_REQUEST, "You already sent friend request!");
-        }
-
         List<User> senderFriends = userRepository.findUserFriends(sender.getId());
         boolean isReceiverInSenderFriendList = senderFriends.stream()
                 .anyMatch(friend -> friend.equals(receiver));
@@ -109,6 +100,25 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         if(isReceiverInSenderFriendList) {
             return DataResult.failure(UserErrorCode.RECEIVER_IS_ALREADY_FRIEND,
                     "Receiver with id = %d is already in current user friend list!".formatted(receiverId));
+        }
+
+        boolean didReceiverSentFriendRequest = userFriendRequestRepository.findSentFriendRequestsByUserId(receiver.getId())
+                .stream()
+                .anyMatch(request -> request.getSender().equals(receiver) && request.getReceiver().equals(sender)
+                        && request.getStatus().equals(UserFriendRequestStatus.WAITING_FOR_RESPONSE));
+
+        if(didReceiverSentFriendRequest) {
+            return DataResult.failure(UserErrorCode.RECEIVER_ALREADY_SENT_FRIEND_REQUEST,
+                    "Receiver with id = %d already sent you friend request!".formatted(receiverId));
+        }
+
+        boolean didSenderSentFriendRequest = userFriendRequestRepository.findSentFriendRequestsByUserId(sender.getId())
+                .stream()
+                .anyMatch(request -> request.getSender().equals(sender) && request.getReceiver().equals(receiver)
+                        && request.getStatus().equals(UserFriendRequestStatus.WAITING_FOR_RESPONSE));
+
+        if(didSenderSentFriendRequest) {
+            return DataResult.failure(UserErrorCode.SENDER_ALREADY_SENT_FRIEND_REQUEST, "You already sent friend request!");
         }
 
         Instant now = Instant.now(clock);
@@ -145,7 +155,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
 
         userFriendRequest.setStatus(status);
         Instant now = Instant.now(clock);
-        userFriendRequest.setReplyAt(now);
+        userFriendRequest.setRepliedAt(now);
 
         userFriendRequestRepository.save(userFriendRequest);
         if(status.equals(UserFriendRequestStatus.ACCEPTED)) {
@@ -542,14 +552,14 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Set<UserFriendRequestResponse>> findCurrentUserReceivedFriendRequests() {
+    public DataResult<Set<UserFriendNotificationResponse>> findCurrentUserFriendNotifications() {
         Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
         }
-
         User user = userOpt.get();
         Long userId = user.getId();
+
         List<UserFriendRequest> receivedFriendRequests = userFriendRequestRepository.findReceivedFriendRequestsByUserId(userId);
         List<UserFriendRequest> sentFriendRequests = userFriendRequestRepository.findSentFriendRequestsByUserId(userId);
 
@@ -559,16 +569,31 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         Stream<UserFriendRequest> repliedFriendRequests = sentFriendRequests.stream()
                 .filter(fr -> !fr.getStatus().equals(UserFriendRequestStatus.WAITING_FOR_RESPONSE));
 
-        Set<UserFriendRequestResponse> response = Stream.concat(waitingForResponseFriendRequests, repliedFriendRequests)
+        Set<UserFriendNotificationResponse> response = Stream.concat(waitingForResponseFriendRequests, repliedFriendRequests)
                 .sorted(Comparator.comparing(UserFriendRequest::getSentAt))
-                .map(UserMapper::fromEntityToResponse)
+                .map(fr -> getNotificationFromFriendRequest(fr, user))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         if(response.isEmpty()) {
             return DataResult.failure(UserErrorCode.FRIEND_NOTIFICATIONS_NOT_FOUND, "Current user has no friend notifications");
         }
-
         return DataResult.success(response);
+    }
+
+    private UserFriendNotificationResponse getNotificationFromFriendRequest(UserFriendRequest friendRequest, User currentUser) {
+        UserFriendRequestStatus status = friendRequest.getStatus();
+        User sender;
+        Instant sentAt;
+        if(status.equals(UserFriendRequestStatus.WAITING_FOR_RESPONSE)) {
+            sender = friendRequest.getSender();
+            sentAt = friendRequest.getSentAt();
+        } else {
+            sender = friendRequest.getReceiver();
+            sentAt = friendRequest.getRepliedAt();
+        }
+        RelationshipStatus relationshipStatus = getRelationshipStatusFromUser(currentUser, sender);
+        UserHeaderResponse senderHeader = UserMapper.fromEntityToUserHeaderResponse(sender, relationshipStatus);
+        return new UserFriendNotificationResponse(friendRequest.getId(), senderHeader, status, sentAt);
     }
 
     public DataResult<UserFriendRequestResponse> findUserFriendRequestForCurrentUser(Long userId) {

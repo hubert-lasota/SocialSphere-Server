@@ -44,13 +44,15 @@ public class UserMapper {
     }
 
     public static UserFriendRequestResponse fromEntityToResponse(UserFriendRequest userFriendRequest) {
-        UserHeaderResponse sender = fromEntityToUserHeaderResponse(userFriendRequest.getSender(), RelationshipStatus.FRIEND);
+        UserHeaderResponse sender = fromEntityToUserHeaderResponse(userFriendRequest.getSender(), null);
+        UserHeaderResponse receiver = fromEntityToUserHeaderResponse(userFriendRequest.getReceiver(), null);
         return new UserFriendRequestResponse(
                 userFriendRequest.getId(),
                 sender,
-                userFriendRequest.getReceiver().getId(),
+                receiver,
                 userFriendRequest.getStatus(),
-                userFriendRequest.getSentAt()
+                userFriendRequest.getSentAt(),
+                userFriendRequest.getRepliedAt()
         );
     }
 
