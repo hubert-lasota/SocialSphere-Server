@@ -1,9 +1,7 @@
 package org.hl.socialspherebackend.application.user;
 
 import org.hl.socialspherebackend.api.dto.common.DataResult;
-import org.hl.socialspherebackend.api.dto.user.request.UserFriendRequestDto;
-import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
-import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
+import org.hl.socialspherebackend.api.dto.user.request.*;
 import org.hl.socialspherebackend.api.dto.user.response.*;
 import org.hl.socialspherebackend.api.entity.user.*;
 import org.hl.socialspherebackend.application.common.Observable;
@@ -27,8 +25,6 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -264,7 +260,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<UserWrapperResponse> findUserById(Long userId) {
+    public DataResult<UserWithProfileResponse> findUserById(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
@@ -278,7 +274,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         User currentUser = currentUserOpt.get();
 
         RelationshipStatus status = getRelationshipStatusFromUser(currentUser, user);
-        UserWrapperResponse response = UserMapper.fromEntityToUserWrapperResponse(user, status);
+        UserWithProfileResponse response = UserMapper.fromEntityToUserWithProfileResponse(user, status);
         return DataResult.success(response);
     }
 
@@ -346,7 +342,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
-    public DataResult<Set<UserWrapperResponse>> findCurrentUserFriends() {
+    public DataResult<Set<UserWithProfileResponse>> findCurrentUserFriends() {
         Optional<User> userOpt = AuthUtils.getCurrentUser();
         if(userOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
@@ -361,15 +357,15 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
                     "Current user has no friends!");
         }
 
-        Set<UserWrapperResponse> userFriendsResponse = userFriends
+        Set<UserWithProfileResponse> userFriendsResponse = userFriends
                 .stream()
-                .map(u -> UserMapper.fromEntityToUserWrapperResponse(u, RelationshipStatus.FRIEND))
+                .map(u -> UserMapper.fromEntityToUserWithProfileResponse(u, RelationshipStatus.FRIEND))
                 .collect(toSet());
 
         return DataResult.success(userFriendsResponse);
     }
 
-    public DataResult<Page<UserWrapperResponse>> findCurrentUserFriends(int page, int size) {
+    public DataResult<Page<UserWithProfileResponse>> findCurrentUserFriends(int page, int size) {
         Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         if(currentUserOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
@@ -386,11 +382,12 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<User> userFriendsPage = PageUtils.createPageImpl(userFriends, pageable);
-        Page<UserWrapperResponse> response = userFriendsPage.map(u -> UserMapper.fromEntityToUserWrapperResponse(u, RelationshipStatus.FRIEND));
+        Page<UserWithProfileResponse> response =
+                userFriendsPage.map(u -> UserMapper.fromEntityToUserWithProfileResponse(u, RelationshipStatus.FRIEND));
         return DataResult.success(response);
     }
 
-    public DataResult<Page<UserWrapperResponse>> findUserFriends(Long userId, int page, int size) {
+    public DataResult<Page<UserWithProfileResponse>> findUserFriends(Long userId, int page, int size) {
         Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         Optional<User> userToCheckOpt = userRepository.findById(userId);
         if(currentUserOpt.isEmpty()) {
@@ -419,14 +416,14 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         Pageable pageable = PageRequest.of(page, size);
         Page<User> userToCheckFriendsPage = PageUtils.createPageImpl(userToCheckFriends, pageable);
 
-        Page<UserWrapperResponse> response = userToCheckFriendsPage.map(u -> {
+        Page<UserWithProfileResponse> response = userToCheckFriendsPage.map(u -> {
             RelationshipStatus status = getRelationshipStatusFromUser(currentUser, u);
-            return UserMapper.fromEntityToUserWrapperResponse(u, status);
+            return UserMapper.fromEntityToUserWithProfileResponse(u, status);
         });
         return DataResult.success(response);
     }
 
-    public DataResult<Set<UserWrapperResponse>> findCurrentUserFriendsWithNoSharedChat() {
+    public DataResult<Set<UserWithProfileResponse>> findCurrentUserFriendsWithNoSharedChat() {
         Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         if(currentUserOpt.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_NOT_FOUND,
@@ -438,8 +435,8 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         if(userFriendsWithNoSharedChat.isEmpty()) {
             return DataResult.failure(UserErrorCode.USER_HAS_NO_FRIENDS, "Current user has no friends with no shared chats!");
         }
-        Set<UserWrapperResponse> response = userFriendsWithNoSharedChat.stream()
-                .map((u) -> UserMapper.fromEntityToUserWrapperResponse(u, RelationshipStatus.FRIEND))
+        Set<UserWithProfileResponse> response = userFriendsWithNoSharedChat.stream()
+                .map((u) -> UserMapper.fromEntityToUserWithProfileResponse(u, RelationshipStatus.FRIEND))
                 .collect(toSet());
 
         return DataResult.success(response);
@@ -470,11 +467,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
             return DataResult.failure(UserErrorCode.USERS_NOT_FOUND, "There are no users in database");
         }
 
-        Pattern compiledPattern = Pattern.compile("^" + pattern + ".*$", Pattern.CASE_INSENSITIVE);
-
         List<User> userEntitiesThatContainsFirstNameString = userEntitiesWithProfiles
                 .stream()
-                .filter(u -> matchFirstName(compiledPattern, u))
+                .filter(u -> u.getUserProfile().getFirstName().startsWith(pattern))
                 .toList();
 
         List<User> userEntitiesResponse = new ArrayList<>(size);
@@ -488,7 +483,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         if(userEntitiesResponse.size() < size) {
             List<User> userEntitiesThatContainsLastNameString = userEntitiesWithProfiles.stream()
                     .filter(u -> checkUserInList(userEntitiesThatContainsFirstNameString, u))
-                    .filter(u -> matchLastName(compiledPattern, u))
+                    .filter(u -> u.getUserProfile().getLastName().startsWith(pattern))
                     .toList();
 
             for(int i = userEntitiesResponse.size(); i < size && i < userEntitiesThatContainsLastNameString.size(); i++) {
@@ -507,21 +502,6 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         }
 
         return DataResult.success(response);
-    }
-
-    private boolean matchFirstName(Pattern pattern, User user) {
-        String firstName = user.getUserProfile().getFirstName();
-        return matchUserField(pattern, firstName);
-    }
-
-    private boolean matchLastName(Pattern pattern, User user) {
-        String lastName = user.getUserProfile().getLastName();
-        return matchUserField(pattern, lastName);
-    }
-
-    private boolean matchUserField(Pattern pattern, String matcher) {
-        Matcher m = pattern.matcher(matcher);
-        return m.matches();
     }
 
     private boolean checkUserInList(List<User> users, User user) {
@@ -618,6 +598,106 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         }
 
         UserFriendRequestResponse response = UserMapper.fromEntityToResponse(friendRequestOpt.get());
+        return DataResult.success(response);
+    }
+
+    public DataResult<Page<UserWithProfileResponse>> searchFriends(SearchFriendsRequest request, int page, int size) {
+        RequestValidateResult validateResult = requestValidator.validate(request);
+        if(!validateResult.valid()) {
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
+        }
+
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+
+        User currentUser = currentUserOpt.get();
+        Long currentUserId = currentUser.getId();
+        SearchFriendsRelationshipStatus status = request.relationshipStatus();
+        List<User> usersFilteredByRelationshipStatus;
+        if(status.equals(SearchFriendsRelationshipStatus.FRIENDS)) {
+            usersFilteredByRelationshipStatus = userRepository.findUserFriends(currentUserId);
+        } else if(status.equals(SearchFriendsRelationshipStatus.STRANGER)) {
+            usersFilteredByRelationshipStatus = userRepository.findUserStrangers(currentUserId);
+        } else {
+            usersFilteredByRelationshipStatus = userRepository.findAll();
+        }
+
+        if(usersFilteredByRelationshipStatus.isEmpty()) {
+            return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND,
+                    "There are no users that match relationship status = '%s'".formatted(status));
+        }
+
+        String firstNamePattern = request.firstNamePattern();
+        List<User> usersFilteredByFirstName;
+        if(firstNamePattern == null || firstNamePattern.isEmpty()) {
+            usersFilteredByFirstName = usersFilteredByRelationshipStatus;
+        } else {
+            usersFilteredByFirstName = usersFilteredByRelationshipStatus.stream()
+                    .filter(u -> u.getUserProfile().getFirstName().startsWith(firstNamePattern))
+                    .toList();
+        }
+
+        if(usersFilteredByFirstName.isEmpty()) {
+            return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND,
+                    "There are no users that match firstNamePattern = '%s'".formatted(firstNamePattern));
+        }
+
+        String lastNamePattern = request.lastNamePattern();
+        List<User> usersFilteredByLastName ;
+        if(lastNamePattern == null || lastNamePattern.isEmpty()) {
+            usersFilteredByLastName = usersFilteredByFirstName;
+        } else {
+            usersFilteredByLastName = usersFilteredByFirstName.stream()
+                    .filter(u -> u.getUserProfile().getLastName().startsWith(lastNamePattern))
+                    .toList();
+        }
+
+        if(usersFilteredByLastName.isEmpty()) {
+            return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND,
+                    "There are no users that match lastNamePattern = '%s'".formatted(lastNamePattern));
+        }
+
+        String cityPattern = request.cityPattern();
+        List<User> usersFilteredByCity;
+        if(cityPattern == null || cityPattern.isEmpty()) {
+            usersFilteredByCity = usersFilteredByLastName;
+        } else {
+            usersFilteredByCity = usersFilteredByLastName.stream()
+                    .filter(u -> u.getUserProfile().getCity().startsWith(cityPattern))
+                    .toList();
+        }
+
+        if(usersFilteredByCity.isEmpty()) {
+            return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND,
+                    "There are no users that match cityPattern = '%s'".formatted(cityPattern));
+        }
+
+        String countryPattern = request.countryPattern();
+        List<User> usersFilteredByCountry;
+        if(countryPattern == null || countryPattern.isEmpty()) {
+            usersFilteredByCountry = usersFilteredByCity;
+        } else {
+            usersFilteredByCountry = usersFilteredByCity.stream()
+                    .filter(u -> u.getUserProfile().getCountry().startsWith(countryPattern))
+                    .toList();
+        }
+
+        List<User> usersWithFilteredCurrentUser = usersFilteredByCountry.stream()
+                .filter(u -> !u.equals(currentUser))
+                .toList();
+
+        if(usersWithFilteredCurrentUser.isEmpty()) {
+            return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND,
+                    "There are no users that match countryPattern = '%s'".formatted(countryPattern));
+        }
+
+        Page<User> pageOfFilteredUsers = PageUtils.createPageImpl(usersWithFilteredCurrentUser, PageRequest.of(page, size));
+
+        Page<UserWithProfileResponse> response = pageOfFilteredUsers
+                .map(u -> UserMapper.fromEntityToUserWithProfileResponse(u, getRelationshipStatusFromUser(currentUser, u)));
+
         return DataResult.success(response);
     }
 

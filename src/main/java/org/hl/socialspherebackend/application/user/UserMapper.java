@@ -76,6 +76,12 @@ public class UserMapper {
         return new UserHeaderResponse(entity.getId(), firstName, lastName, profilePicture, status);
     }
 
+    public static UserWithProfileResponse fromEntityToUserWithProfileResponse(User entity, RelationshipStatus status) {
+        UserResponse userResponse = fromEntityToResponse(entity, status);
+        UserProfileResponse userProfileResponse = fromEntityToResponse(entity.getUserProfile());
+        return new UserWithProfileResponse(userResponse, userProfileResponse);
+    }
+
     public static UserProfile fromRequestToEntity(UserProfileRequest userProfileRequest, User user) {
         return new UserProfile(
                 userProfileRequest.firstName(),

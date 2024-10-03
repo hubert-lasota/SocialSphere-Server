@@ -19,6 +19,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Clock;
 import java.time.Instant;
 
 public class AuthorizationFacade {
@@ -28,18 +29,21 @@ public class AuthorizationFacade {
     private final JwtFacade jwtFacade;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
+    private final Clock clock;
 
 
     public AuthorizationFacade(UserRepository userRepository,
                                RequestValidatorChain requestValidator,
                                JwtFacade jwtFacade,
                                AuthenticationManager authenticationManager,
-                               PasswordEncoder passwordEncoder) {
+                               PasswordEncoder passwordEncoder,
+                               Clock clock) {
         this.userRepository = userRepository;
         this.requestValidator = requestValidator;
         this.jwtFacade = jwtFacade;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
+        this.clock = clock;
     }
 
 
@@ -56,7 +60,7 @@ public class AuthorizationFacade {
             return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage(), HttpStatus.BAD_REQUEST);
         }
 
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         User user = AuthorizationMapper.fromRequestToEntity(encodedRequest, now);
         Authority authority = new Authority(user, "USER");
         user.appendAuthority(authority);
@@ -91,12 +95,28 @@ public class AuthorizationFacade {
 
         String jwt = jwtFacade.generateToken(userDetails);
         userDetails.setOnline(true);
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         userDetails.setLastOnlineAt(now);
         userRepository.save(userDetails);
 
         LoginResponse response = AuthorizationMapper.fromEntityToResponse(userDetails, jwt);
         return DataResult.success(response);
+    }
+
+
+    public DataResult<?> logout(UserTokenRequest request) {
+        User userDetails = null;
+        try {
+            userDetails = userRepository.findByUsername(request.username())
+                    .orElseThrow(() -> new UsernameNotFoundException("There is no user with this username : %s".formatted(request.username())));
+        } catch (UsernameNotFoundException e) {
+            return DataResult.failure(AuthorizationErrorCode.USERNAME_DOES_NOT_EXISTS,
+                    "username: %s doesn't exists in database!".formatted(request.username()));
+        }
+
+        userDetails.setOnline(false);
+        userRepository.save(userDetails);
+        return DataResult.success(null);
     }
 
     public DataResult<LoginResponse> validateUserToken(UserTokenRequest request) {
@@ -106,8 +126,7 @@ public class AuthorizationFacade {
                     .orElseThrow(() -> new UsernameNotFoundException("There is no user with this username : %s".formatted(request.username())));
         } catch (UsernameNotFoundException e) {
             return DataResult.failure(AuthorizationErrorCode.USERNAME_DOES_NOT_EXISTS,
-                    "username: %s doesn't exists in database!".formatted(request.username()),
-                    HttpStatus.BAD_REQUEST);
+                    "username: %s doesn't exists in database!".formatted(request.username()));
         }
 
 
@@ -115,8 +134,7 @@ public class AuthorizationFacade {
             LoginResponse response = AuthorizationMapper.fromEntityToResponse((User) userDetails, request.jwt());
             return DataResult.success(response);
         } else {
-            return DataResult.failure(AuthorizationErrorCode.NOT_VALID_USER,
-                    "Token is not valid!", HttpStatus.BAD_REQUEST);
+            return DataResult.failure(AuthorizationErrorCode.NOT_VALID_USER,"Token is not valid!");
         }
     }
 
@@ -126,7 +144,7 @@ public class AuthorizationFacade {
                     "UserToken is invalid", HttpStatus.BAD_REQUEST);
         }
 
-        UserDetails userDetails = userDetails = userRepository.findByUsername(request.username())
+        UserDetails userDetails = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new UsernameNotFoundException("There is no user with this username : %s".formatted(request.username())));
 
         String jwt = jwtFacade.generateToken(userDetails);

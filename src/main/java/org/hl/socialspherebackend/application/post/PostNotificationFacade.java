@@ -14,7 +14,6 @@ import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -52,7 +51,7 @@ public class PostNotificationFacade {
         User user = userOpt.get();
 
         PostUpdateNotification postUpdateNotification =
-                new PostUpdateNotification(post, user, postUpdateDetails.updateType(), Instant.now(), false);
+                new PostUpdateNotification(post, user, postUpdateDetails.updateType(), postUpdateDetails.updatedAt(), false);
         return notificationRepository.save(postUpdateNotification);
     }
 

@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Clock;
 import java.util.Optional;
 
 @Configuration
@@ -22,8 +23,9 @@ public class AuthorizationConfig {
                                                    RequestValidatorChain requestValidatorChain,
                                                    JwtFacade jwtFacade,
                                                    AuthenticationManager authenticationManager,
-                                                   PasswordEncoder passwordEncoder) {
-        return new AuthorizationFacade(userRepository, requestValidatorChain, jwtFacade, authenticationManager, passwordEncoder);
+                                                   PasswordEncoder passwordEncoder,
+                                                   Clock clock) {
+        return new AuthorizationFacade(userRepository, requestValidatorChain, jwtFacade, authenticationManager, passwordEncoder, clock);
     }
 
 

@@ -1,15 +1,15 @@
 package org.hl.socialspherebackend.infrastructure.user;
 
 import org.hl.socialspherebackend.api.dto.common.DataResult;
-import org.hl.socialspherebackend.api.dto.user.request.UserFriendRequestDto;
-import org.hl.socialspherebackend.api.dto.user.request.UserProfileConfigRequest;
-import org.hl.socialspherebackend.api.dto.user.request.UserProfileRequest;
+import org.hl.socialspherebackend.api.dto.user.request.*;
 import org.hl.socialspherebackend.application.user.UserFacade;
 import org.hl.socialspherebackend.application.user.UserFriendRequestNotificationSubscriber;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/user")
@@ -126,6 +126,23 @@ public class UserEndpoint {
         } else {
             result = userFacade.findUserFriends(userId, page, size);
         }
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
+    @GetMapping(value = "/friend/search")
+    public ResponseEntity<?> searchFriends(@RequestParam Map<String, String> params,
+                                           @RequestParam SearchFriendsRelationshipStatus relationshipStatus,
+                                           @RequestParam int page,
+                                           @RequestParam int size
+    ) {
+        SearchFriendsRequest request = new SearchFriendsRequest(params.get("firstNamePattern"),
+                params.get("lastNamePattern"),
+                params.get("cityPattern"),
+                params.get("countryPattern"),
+                relationshipStatus);
+
+        DataResult<?> result = userFacade.searchFriends(request, page, size);
 
         return new ResponseEntity<>(result, result.getHttpStatus());
     }

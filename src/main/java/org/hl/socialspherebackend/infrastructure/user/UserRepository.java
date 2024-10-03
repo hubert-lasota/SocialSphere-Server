@@ -33,6 +33,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
         """, nativeQuery = true)
     List<User> findUserFriends(Long userId);
 
+	@Query(value = """
+           select u.*
+           from users u
+           where u.id NOT IN
+               (select inverse_friend_id as friend_id
+               from user_friend_list
+               where friend_id = :userId
+               union
+               select friend_id as friend_id
+               from user_friend_list
+               where inverse_friend_id = :userId)
+        """, nativeQuery = true)
+	List<User> findUserStrangers(Long userId);
+
     @Query(value = """
            select u.*
            from users u
@@ -67,6 +81,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         where pl.post_id = :postId
     """, nativeQuery = true)
 	List<User> findUsersLikedPost(Long postId);
+
 	@Query(value = """
 		select u.* 
 		from users u

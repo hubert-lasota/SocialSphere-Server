@@ -35,6 +35,13 @@ public class AuthorizationEndpoint {
         return new ResponseEntity<>(result, result.getHttpStatus());
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody UserTokenRequest request) {
+        DataResult<?> result = authorizationFacade.logout(request);
+
+        return new ResponseEntity<>(result, result.getHttpStatus());
+    }
+
     @PostMapping("/validate")
     public ResponseEntity<?> validateUserToken(@RequestBody UserTokenRequest request) {
         DataResult<?> result = authorizationFacade.validateUserToken(request);

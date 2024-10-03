@@ -13,7 +13,8 @@ public class RequestValidatorConfig {
         PostCommentRequestValidator postCommentRequestValidator = new PostCommentRequestValidator(chatMessageRequestValidator);
         PostRequestValidator postRequestValidator = new PostRequestValidator(postCommentRequestValidator);
         UserProfileRequestValidator userProfileRequestValidator = new UserProfileRequestValidator(postRequestValidator);
-        return new AuthorizationRequestValidator(userProfileRequestValidator);
+        SearchFriendsRequestValidator searchFriendsRequestValidator = new SearchFriendsRequestValidator(userProfileRequestValidator);
+        return new AuthorizationRequestValidator(searchFriendsRequestValidator);
     }
 
 }
