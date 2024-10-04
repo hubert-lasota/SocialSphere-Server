@@ -144,7 +144,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         Optional<User> senderOpt = AuthUtils.getCurrentUser();
 
         if(senderOpt.isEmpty()) {
-            return DataResult.failure(UserErrorCode.SENDER_NOT_FOUND, "Current user not found!", HttpStatus.BAD_REQUEST);
+            return DataResult.failure(UserErrorCode.SENDER_NOT_FOUND, "Current user not found!");
         }
 
         UserFriendRequest userFriendRequest = userFriendRequestOpt.get();
@@ -486,8 +486,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
                     .filter(u -> u.getUserProfile().getLastName().startsWith(pattern))
                     .toList();
 
-            for(int i = userEntitiesResponse.size(); i < size && i < userEntitiesThatContainsLastNameString.size(); i++) {
-                userEntitiesResponse.add(userEntitiesThatContainsLastNameString.get(i));
+            for(User u : userEntitiesThatContainsLastNameString) {
+                if(userEntitiesResponse.size() >= size) break;
+                userEntitiesResponse.add(u);
             }
         }
 

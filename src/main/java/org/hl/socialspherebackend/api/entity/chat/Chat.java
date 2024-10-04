@@ -52,18 +52,6 @@ public class Chat {
         users.add(user);
     }
 
-    public void removeUser(User user) {
-        users.remove(user);
-    }
-
-    public void addChatMessage(ChatMessage chatMessage) {
-        chatMessages.add(chatMessage);
-    }
-
-    public void removeChatMessage(ChatMessage chatMessage) {
-        chatMessages.remove(chatMessage);
-    }
-
     public Long getId() {
         return id;
     }
@@ -86,10 +74,6 @@ public class Chat {
 
     public ChatMessage getLastMessage() {
         return lastMessage;
-    }
-
-    public void setLastMessage(ChatMessage lastMessage) {
-        this.lastMessage = lastMessage;
     }
 
     public Set<ChatMessage> getChatMessages() {

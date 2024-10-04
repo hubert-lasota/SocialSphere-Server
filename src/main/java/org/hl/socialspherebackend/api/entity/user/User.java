@@ -144,14 +144,6 @@ public class User implements UserDetails {
         this.password = password;
     }
 
-    public Set<UserFriendRequest> getSentFriendRequests() {
-        return sentFriendRequests;
-    }
-
-    public Set<UserFriendRequest> getReceivedFriendRequests() {
-        return receivedFriendRequests;
-    }
-
     public UserProfile getUserProfile() {
         return userProfile;
     }

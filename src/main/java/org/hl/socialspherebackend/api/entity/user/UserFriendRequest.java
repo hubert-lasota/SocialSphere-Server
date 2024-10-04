@@ -42,6 +42,10 @@ public class UserFriendRequest {
         this.sentAt = sentAt;
     }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public Long getId() {
         return id;
     }
@@ -56,10 +60,6 @@ public class UserFriendRequest {
 
     public User getReceiver() {
         return receiver;
-    }
-
-    public void setReceiver(User receiver) {
-        this.receiver = receiver;
     }
 
     public UserFriendRequestStatus getStatus() {

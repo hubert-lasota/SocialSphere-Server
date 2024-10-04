@@ -2,8 +2,10 @@ package org.hl.socialspherebackend.infrastructure.chat;
 
 import org.hl.socialspherebackend.api.entity.chat.Chat;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -31,5 +33,11 @@ public interface ChatRepository extends JpaRepository<Chat, Long> {
             """, nativeQuery = true)
     List<Chat> findChatsWithNewMessages(Long userId);
 
+    @Modifying
+    @Transactional
+    @Query(value = """
+        update chat set last_message_id = :chatMessageId where id = :chatId
+    """, nativeQuery = true)
+    void updateLastMessage(Long chatId, Long chatMessageId);
 
 }

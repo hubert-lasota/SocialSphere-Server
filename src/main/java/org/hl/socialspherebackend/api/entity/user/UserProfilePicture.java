@@ -38,9 +38,6 @@ public class UserProfilePicture {
         this.imageType = imageType;
     }
 
-    public String getImageType() {
-        return imageType;
-    }
 
     public byte[] getImage() {
         return image;

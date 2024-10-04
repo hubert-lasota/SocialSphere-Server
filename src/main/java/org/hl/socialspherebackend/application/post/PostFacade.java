@@ -93,7 +93,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
         RequestValidateResult validateResult = requestValidator.validate(request);
         if(!validateResult.valid()) {
-            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage(), HttpStatus.BAD_REQUEST);
+            return DataResult.failure(validateResult.errorCode(), validateResult.errorMessage());
         }
 
         Instant now = Instant.now(clock);
@@ -140,7 +140,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
 
         Optional<Post> postOpt = postRepository.findById(request.postId());
         if(postOpt.isEmpty()) {
-            return DataResult.failure(PostErrorCode.USER_NOT_FOUND,
+            return DataResult.failure(PostErrorCode.POST_NOT_FOUND,
                     "Could not find post with id = %d in database!".formatted(request.postId()));
         }
 
@@ -387,6 +387,8 @@ public class PostFacade implements Observable<PostUpdateDetails> {
             post.setImages(postImages);
         }
 
+        post.setUpdatedAt(Instant.now(clock));
+        postRepository.save(post);
         PostResponse response = PostMapper.fromEntityToResponse(post, checkIfCurrentUserLikedPost(postAuthor, post));
         return DataResult.success(response);
     }
@@ -420,7 +422,8 @@ public class PostFacade implements Observable<PostUpdateDetails> {
         }
 
         comment.setContent(request.content());
-
+        comment.setUpdatedAt(Instant.now(clock));
+        postCommentRepository.save(comment);
         PostCommentResponse response = PostMapper.fromEntityToResponse(comment);
         return DataResult.success(response);
     }
@@ -478,7 +481,7 @@ public class PostFacade implements Observable<PostUpdateDetails> {
     }
 
     private boolean checkIfCurrentUserLikedPost(User user, Post post) {
-    List<User> likedBy = userRepository.findUsersLikedPost(post.getId());
+        List<User> likedBy = userRepository.findUsersLikedPost(post.getId());
         for(User u : likedBy) {
             if(u.equals(user))
                 return true;

@@ -64,10 +64,6 @@ public class Post {
     }
 
 
-    public void appendPostImage(PostImage postImage) {
-        this.images.add(postImage);
-    }
-
     public void appendPostComment(PostComment postComment) {
         this.comments.add(postComment);
     }
@@ -110,6 +106,10 @@ public class Post {
 
     public Set<PostComment> getComments() {
         return comments;
+    }
+
+    public void setLikedBy(Set<User> likedBy) {
+        this.likedBy = likedBy;
     }
 
     public Set<User> getLikedBy() {

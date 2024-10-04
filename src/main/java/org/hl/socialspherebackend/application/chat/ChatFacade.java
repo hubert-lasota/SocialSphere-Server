@@ -88,7 +88,6 @@ public class ChatFacade {
 
         ChatResponse response = ChatMapper.fromEntitiesToResponse(chat, receiver, false);
         return DataResult.success(response);
-
     }
 
     public void sendMessage(ChatMessageRequest request, Principal principal) {
@@ -115,6 +114,7 @@ public class ChatFacade {
         ChatMessage chatMessage = new ChatMessage(request.content(), now, chat, sender);
 
         chatMessageRepository.save(chatMessage);
+        chatRepository.updateLastMessage(chat.getId(), chatMessage.getId());
         ChatMessageResponse response = ChatMapper.fromEntityToResponse(chatMessage);
 
         Long receiverId = findSecondUserInChat(chat, sender).getId();
