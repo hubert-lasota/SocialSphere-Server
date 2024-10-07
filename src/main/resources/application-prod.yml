@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: SocialSphereBackend
+  mvc:
+    async:
+      request-timeout: -1
+
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;database=SocialSphere;trustServerCertificate=true;
+    username: hubert
+    password: root123
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+  jpa:
+    open-in-view: true
+
+  liquibase:
+    change-log: classpath:database/changelog.xml
+
+
+jwt:
+  secret: 951b507db97ad30ab856ce9e0751a0a22c3b4c83db0b1b75537cd93996fa4c58
+  expiration_days: 3

@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: SocialSphereBackend
+  mvc:
+    async:
+      request-timeout: -1
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;database=SocialSphereDev;trustServerCertificate=true;
+    username: socialsphereuser
+    password: pass
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+  liquibase:
+    change-log: classpath:database/changelog.xml
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql=true:
+
+    open-in-view: true
+
+logging:
+  level:
+    org:
+      hibernate:
+        #SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+             # BasicBinder: DEBUG
+    org.hl.socialspherebackend:
+        application:
+          user: DEBUG
+          post: DEBUG
+          notification: DEBUG
+          authorization: DEBUG
+          util: DEBUG
+          chat: DEBUG
+        infrastructure:
+          web:
+            WebSocketConfig: INFO
+
+    org.springframework:
+      jdbc:
+        core: INFO
+
+      web:
+        servlet: DEBUG
+        socket: INFO
+        socket.server: INFO
+      messaging: INFO
+
+jwt:
+  secret: 951b507db97ad30ab856ce9e0751a0a22c3b4c83db0b1b75537cd93996fa4c58
+  expiration_days: 14
