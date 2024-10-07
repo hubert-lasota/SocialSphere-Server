@@ -204,6 +204,22 @@ public class User implements UserDetails {
         this.updatedAt = updatedAt;
     }
 
+    public void setReceivedFriendRequests(Set<UserFriendRequest> receivedFriendRequests) {
+        this.receivedFriendRequests = receivedFriendRequests;
+    }
+
+    public void setSentFriendRequests(Set<UserFriendRequest> sentFriendRequests) {
+        this.sentFriendRequests = sentFriendRequests;
+    }
+
+    public Set<UserFriendRequest> getSentFriendRequests() {
+        return sentFriendRequests;
+    }
+
+    public Set<UserFriendRequest> getReceivedFriendRequests() {
+        return receivedFriendRequests;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

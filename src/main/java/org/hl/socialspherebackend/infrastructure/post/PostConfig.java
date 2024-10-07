@@ -10,7 +10,6 @@ import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.hl.socialspherebackend.infrastructure.user.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 import java.time.Clock;
 import java.util.Set;
@@ -38,12 +37,6 @@ public class PostConfig {
     @Bean
     public PostNotificationFacade postNotificationFacade(PostUpdateNotificationRepository repository, PostRepository postRepository, UserRepository userRepository) {
         return new PostNotificationFacade(repository, postRepository, userRepository);
-    }
-
-    @Profile("dev")
-    @Bean
-    public PostInitData postInitData(PostRepository postRepository, UserRepository userRepository) {
-        return new PostInitData(postRepository, userRepository);
     }
 
 }

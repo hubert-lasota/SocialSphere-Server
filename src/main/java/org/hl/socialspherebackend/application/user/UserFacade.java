@@ -446,6 +446,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         if(pattern == null || pattern.isBlank()) {
             return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND, "Pattern cannot be null or blank");
         }
+        final String patternLowerCase = pattern.toLowerCase();
 
         Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
         if(currentUserOpt.isEmpty()) {
@@ -458,58 +459,29 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
             return DataResult.failure(UserErrorCode.USERS_NOT_FOUND, "There are no users in database");
         }
 
-        List<User> userEntitiesWithProfiles = userEntities
+        Set<User> userEntitiesFiltered = userEntities
                 .stream()
                 .filter(u -> u.getUserProfile() != null)
-                .toList();
+                .filter(u -> {
+                    String firstName = u.getUserProfile().getFirstName().toLowerCase();
+                    String lastName = u.getUserProfile().getLastName().toLowerCase();
+                    String name = firstName + " " + lastName;
+                    return firstName.startsWith(patternLowerCase) || lastName.startsWith(patternLowerCase) || name.startsWith(patternLowerCase);
+                })
+                .filter(u -> !u.equals(currentUser))
+                .limit(size)
+                .collect(toSet());
 
-        if(userEntitiesWithProfiles.isEmpty()) {
-            return DataResult.failure(UserErrorCode.USERS_NOT_FOUND, "There are no users in database");
+        if(userEntitiesFiltered.isEmpty()) {
+            return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND, "There are no users in database");
         }
 
-        List<User> userEntitiesThatContainsFirstNameString = userEntitiesWithProfiles
-                .stream()
-                .filter(u -> u.getUserProfile().getFirstName().startsWith(pattern))
-                .toList();
-
-        List<User> userEntitiesResponse = new ArrayList<>(size);
-
-        if(!userEntitiesThatContainsFirstNameString.isEmpty()) {
-            for(int i = 0; i < size && i < userEntitiesThatContainsFirstNameString.size(); i++) {
-                userEntitiesResponse.add(userEntitiesThatContainsFirstNameString.get(i));
-            }
-        }
-
-        if(userEntitiesResponse.size() < size) {
-            List<User> userEntitiesThatContainsLastNameString = userEntitiesWithProfiles.stream()
-                    .filter(u -> checkUserInList(userEntitiesThatContainsFirstNameString, u))
-                    .filter(u -> u.getUserProfile().getLastName().startsWith(pattern))
-                    .toList();
-
-            for(User u : userEntitiesThatContainsLastNameString) {
-                if(userEntitiesResponse.size() >= size) break;
-                userEntitiesResponse.add(u);
-            }
-        }
-
-        Set<UserHeaderResponse> response = userEntitiesResponse
+        Set<UserHeaderResponse> response = userEntitiesFiltered
                 .stream()
                 .map(u -> UserMapper.fromEntityToUserHeaderResponse(u, getRelationshipStatusFromUser(currentUser, u)))
                 .collect(toSet());
 
-
-        if(response.isEmpty()) {
-            return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND, "There are no users with these parameters");
-        }
-
         return DataResult.success(response);
-    }
-
-    private boolean checkUserInList(List<User> users, User user) {
-        for(User u : users) {
-            if(u.equals(user)) return false;
-        }
-        return true;
     }
 
     public DataResult<byte[]> findCurrentUserProfilePicture() {
@@ -602,6 +574,28 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         return DataResult.success(response);
     }
 
+    public DataResult<Page<UserWithProfileResponse>> findUsersBySearchFriendsRelationshipStatus(SearchFriendsRelationshipStatus relationshipStatus, int page, int size) {
+        Optional<User> currentUserOpt = AuthUtils.getCurrentUser();
+        if(currentUserOpt.isEmpty()) {
+            return DataResult.failure(UserErrorCode.USER_NOT_FOUND, "Could not find current user!");
+        }
+
+        User currentUser = currentUserOpt.get();
+        List<User> users = getUsersBySearchRelationshipStatus(relationshipStatus, currentUser.getId())
+                .stream()
+                .filter(u -> !u.equals(currentUser))
+                .toList();
+
+        Page<User> userPage = PageUtils.createPageImpl(users, PageRequest.of(page, size));
+        if(userPage.isEmpty()) {
+            return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND,
+                    "Could not find users with relationship status = %s".formatted(relationshipStatus));
+        }
+        Page<UserWithProfileResponse> response =
+                userPage.map(u -> UserMapper.fromEntityToUserWithProfileResponse(u, getRelationshipStatusFromUser(currentUser, u)));
+        return DataResult.success(response);
+    }
+
     public DataResult<Page<UserWithProfileResponse>> searchFriends(SearchFriendsRequest request, int page, int size) {
         RequestValidateResult validateResult = requestValidator.validate(request);
         if(!validateResult.valid()) {
@@ -616,14 +610,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         User currentUser = currentUserOpt.get();
         Long currentUserId = currentUser.getId();
         SearchFriendsRelationshipStatus status = request.relationshipStatus();
-        List<User> usersFilteredByRelationshipStatus;
-        if(status.equals(SearchFriendsRelationshipStatus.FRIENDS)) {
-            usersFilteredByRelationshipStatus = userRepository.findUserFriends(currentUserId);
-        } else if(status.equals(SearchFriendsRelationshipStatus.STRANGER)) {
-            usersFilteredByRelationshipStatus = userRepository.findUserStrangers(currentUserId);
-        } else {
-            usersFilteredByRelationshipStatus = userRepository.findAll();
-        }
+        List<User> usersFilteredByRelationshipStatus = getUsersBySearchRelationshipStatus(status, currentUserId);
 
         if(usersFilteredByRelationshipStatus.isEmpty()) {
             return DataResult.failure(UserErrorCode.SEARCH_USERS_NOT_FOUND,
@@ -635,8 +622,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         if(firstNamePattern == null || firstNamePattern.isEmpty()) {
             usersFilteredByFirstName = usersFilteredByRelationshipStatus;
         } else {
+            final String firstNamePatternToLowerCase = firstNamePattern.toLowerCase();
             usersFilteredByFirstName = usersFilteredByRelationshipStatus.stream()
-                    .filter(u -> u.getUserProfile().getFirstName().startsWith(firstNamePattern))
+                    .filter(u -> u.getUserProfile().getFirstName().toLowerCase().startsWith(firstNamePatternToLowerCase))
                     .toList();
         }
 
@@ -650,8 +638,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         if(lastNamePattern == null || lastNamePattern.isEmpty()) {
             usersFilteredByLastName = usersFilteredByFirstName;
         } else {
+            final String lastNamePatternToLowerCase = lastNamePattern.toLowerCase();
             usersFilteredByLastName = usersFilteredByFirstName.stream()
-                    .filter(u -> u.getUserProfile().getLastName().startsWith(lastNamePattern))
+                    .filter(u -> u.getUserProfile().getLastName().toLowerCase().startsWith(lastNamePatternToLowerCase))
                     .toList();
         }
 
@@ -665,8 +654,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         if(cityPattern == null || cityPattern.isEmpty()) {
             usersFilteredByCity = usersFilteredByLastName;
         } else {
+            final String cityPatternToLowerCase = cityPattern.toLowerCase();
             usersFilteredByCity = usersFilteredByLastName.stream()
-                    .filter(u -> u.getUserProfile().getCity().startsWith(cityPattern))
+                    .filter(u -> u.getUserProfile().getCity().toLowerCase().startsWith(cityPatternToLowerCase))
                     .toList();
         }
 
@@ -680,8 +670,9 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         if(countryPattern == null || countryPattern.isEmpty()) {
             usersFilteredByCountry = usersFilteredByCity;
         } else {
+            final String countryPatternToLowerCase = countryPattern.toLowerCase();
             usersFilteredByCountry = usersFilteredByCity.stream()
-                    .filter(u -> u.getUserProfile().getCountry().startsWith(countryPattern))
+                    .filter(u -> u.getUserProfile().getCountry().toLowerCase().startsWith(countryPatternToLowerCase))
                     .toList();
         }
 
@@ -701,6 +692,7 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
 
         return DataResult.success(response);
     }
+
 
     public DataResult<UserProfileResponse> updateCurrentUserProfile(UserProfileRequest request, MultipartFile profilePicture) {
         Optional<User> userOpt = AuthUtils.getCurrentUser();
@@ -860,6 +852,18 @@ public class UserFacade implements Observable<UserFriendRequestResponse> {
         }
 
         return relationshipStatus;
+    }
+
+    private List<User> getUsersBySearchRelationshipStatus(SearchFriendsRelationshipStatus status, Long currentUserId) {
+        List<User> users;
+        if(status.equals(SearchFriendsRelationshipStatus.FRIENDS)) {
+            users = userRepository.findUserFriends(currentUserId);
+        } else if(status.equals(SearchFriendsRelationshipStatus.STRANGER)) {
+            users = userRepository.findUserStrangers(currentUserId);
+        } else {
+            users = userRepository.findAll();
+        }
+        return users;
     }
 
 }

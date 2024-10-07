@@ -8,8 +8,6 @@ import org.hl.socialspherebackend.application.user.UserProfilePermissionChecker;
 import org.hl.socialspherebackend.application.validator.RequestValidatorChain;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
 import java.util.Set;
@@ -35,12 +33,6 @@ public class UserConfig {
     @Bean
     public UserFriendRequestNotificationManager userFriendRequestNotificationManager() {
         return new UserFriendRequestNotificationManager();
-    }
-
-    @Profile("dev")
-    @Bean
-    public UserInitData userInitData(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        return new UserInitData(userRepository, passwordEncoder);
     }
 
 }

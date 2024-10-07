@@ -144,6 +144,10 @@ public class Post {
         this.updatedAt = updatedAt;
     }
 
+    public void setComments(Set<PostComment> comments) {
+        this.comments = comments;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

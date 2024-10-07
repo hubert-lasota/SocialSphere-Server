@@ -136,13 +136,21 @@ public class UserEndpoint {
                                            @RequestParam int page,
                                            @RequestParam int size
     ) {
-        SearchFriendsRequest request = new SearchFriendsRequest(params.get("firstNamePattern"),
-                params.get("lastNamePattern"),
-                params.get("cityPattern"),
-                params.get("countryPattern"),
-                relationshipStatus);
+        String firstNamePattern = params.get("firstNamePattern");
+        String lastNamePattern = params.get("lastNamePattern");
+        String cityPattern = params.get("cityPattern");
+        String countryPattern = params.get("countryPattern");
+        DataResult<?> result;
+        if((firstNamePattern == null || firstNamePattern.isBlank()) &&
+                (lastNamePattern == null || lastNamePattern.isBlank()) &&
+                (cityPattern == null || cityPattern.isBlank()) &&
+                (countryPattern == null || countryPattern.isBlank())) {
+            result = userFacade.findUsersBySearchFriendsRelationshipStatus(relationshipStatus, page, size);
+        } else {
 
-        DataResult<?> result = userFacade.searchFriends(request, page, size);
+            SearchFriendsRequest request = new SearchFriendsRequest(firstNamePattern, lastNamePattern, cityPattern, countryPattern, relationshipStatus);
+            result = userFacade.searchFriends(request, page, size);
+        }
 
         return new ResponseEntity<>(result, result.getHttpStatus());
     }

@@ -11,8 +11,8 @@ spring:
       max-request-size: 10MB
   datasource:
     url: jdbc:sqlserver://localhost:1433;database=SocialSphereDev;trustServerCertificate=true;
-    username: hubert
-    password: root123
+    username: socialsphereuser
+    password: pass
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   liquibase:
